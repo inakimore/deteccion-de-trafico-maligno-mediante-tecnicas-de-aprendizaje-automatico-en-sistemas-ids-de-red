@@ -1,0 +1,707 @@
+% =====================================================================
+% CAPITULO 5 - GENERALIZACION Y ROBUSTEZ
+% =====================================================================
+% Responde la pregunta con la que cierra el capitulo 4: si dentro del dia las
+% tres vistas saturan, hay que perturbar las condiciones y ver cual sigue en
+% pie. Cuatro perturbaciones de exigencia creciente.
+%
+% ESTILO (31-ago): sin negritas en el texto corrido, sin incisos entre rayas
+% salvo cuando la frase los pida, y sin florituras.
+% =====================================================================
+
+El capítulo anterior termina con una pregunta. Si dentro de un mismo día las
+tres vistas aciertan por encima de $0.97$ y la comparación no las distingue,
+cómo se decide cuál usar. La respuesta de este capítulo es que hay que perturbar
+las condiciones y ver cuál sigue en pie.
+
+Se aplican cuatro perturbaciones, de menor a mayor exigencia: mirar qué parte de
+la entrada usa realmente el modelo, dejar que el atacante modifique esa parte,
+aplicar el modelo a otro día del mismo régimen y aplicarlo a otro conjunto de
+datos. Bajo todas ellas las vistas dejan de ser equivalentes, y el orden en que
+caen no es el que sugerían sus métricas.
+
+\section{Modelos empleados}
+\label{sec:modelos}
+
+Antes de perturbar queda declarar qué se perturba. Este trabajo emplea diez
+modelos, y la distinción entre los propios y los tomados del estado del arte se
+mantiene explícita en toda la memoria.
+
+\subsection*{Modelos propios}
+
+\begin{itemize}
+  \item Perceptrón multicapa de dos capas ocultas, de 256 y 128 unidades, con
+        activación ReLU, optimizador Adam, regularización $L_2$ de $10^{-4}$ y
+        parada temprana, precedido de un escalado estándar ajustado solo sobre
+        la partición de entrenamiento. Es el clasificador que produce todas las
+        comparaciones entre vistas del capítulo~\ref{ch:regimenes}, y se emplea
+        también sobre las representaciones tabulares del resto de la memoria.
+        Su número de parámetros depende de la dimensión de entrada de cada
+        vista, que va de 4 a 257, por lo que no entra en la comparación a
+        presupuesto igualado que se describe más abajo.
+  \item byte-CNN: red convolucional unidimensional sobre la secuencia cruda de
+        bytes, con \emph{kernels} de varios tamaños en paralelo (3, 5 y 7) para
+        captar $n$-gramas de longitud distinta, seguidos de agrupación máxima
+        global. 29.762 parámetros.
+  \item byte-LSTM: red recurrente bidireccional sobre la misma entrada, pensada
+        como contraste, porque si la firma fuese secuencial de largo alcance
+        debería ganar. 52.482 parámetros.
+  \item Híbrido de dos ramas con fusión tardía: una rama convolucional sobre los
+        bytes y otra densa sobre los metadatos, concatenadas en el espacio de
+        representaciones y no en el de entradas. 31.042 parámetros.
+  \item Autoencoder e Isolation Forest para la detección no supervisada,
+        entrenados únicamente con tráfico benigno.
+\end{itemize}
+
+\subsection*{Modelos del estado del arte, implementados para contrastar}
+
+\begin{itemize}
+  \item byte-Transformer: codificador con autoatención sobre la secuencia de
+        bytes, con \emph{token} \texttt{[CLS]} y codificación posicional
+        aprendida, de 4 cabezas y 2 capas. 41.922 parámetros.
+  \item CrossAttentionNet: fusión por atención cruzada bidireccional entre la
+        rama de bytes y la de metadatos, en lugar de concatenación. 72.066
+        parámetros.
+  \item Random Forest y XGBoost \cite{Chen2016} sobre características de flujo,
+        que son el estándar de facto en la literatura de detección de intrusiones
+        tabular.
+\end{itemize}
+
+Los modelos clásicos se construyen sobre scikit-learn \cite{Pedregosa2011} y los
+profundos sobre PyTorch \cite{Paszke2019}.
+
+\subsection*{Por qué el presupuesto de parámetros importa}
+
+Todos los modelos secuenciales se comparan en una banda estrecha, entre 29.762 y
+72.066 parámetros. No es un detalle de implementación. Sin esa restricción, una
+comparación entre arquitecturas mide sobre todo la capacidad: un
+\emph{transformer} de diez millones de parámetros que superase a un byte-CNN de
+treinta mil no demostraría que la autoatención sea mejor para este problema,
+sino que un modelo mayor ajusta mejor, o peor si sobreajusta. Igualar el
+presupuesto es lo que permite atribuir la diferencia a la arquitectura, que es
+lo que se quiere medir.
+
+\section{Interpretabilidad: qué mira el modelo}
+\label{sec:saliency}
+
+La primera perturbación no es tal. Consiste en abrir el modelo y ver qué parte
+de la entrada usa, y es el paso que motiva todo lo demás.
+
+Sobre el byte-CNN entrenado en el día del SSH-Bruteforce se calcula la saliencia
+por gradientes: la magnitud del gradiente de la salida respecto a cada byte de la
+entrada, promediada sobre los flujos de ataque. Mide cuánto cambiaría la decisión
+si ese byte cambiase.
+
+El resultado, en la figura~\ref{fig:saliency}, es inequívoco. El 31.1\% de la
+importancia total se concentra en los primeros 48 bytes de un flujo que puede
+llegar a 64 kilobytes. Esa zona es exactamente donde vive el \emph{banner} SSH
+en claro, que precede a la negociación de la sesión. El cuerpo cifrado, que
+ocupa el resto, apenas contribuye.
+
+Inspeccionando esos bytes se ve por qué. El atacante emite dos banners distintos
+en todos sus flujos, siendo el modal literalmente
+\texttt{SSH-2.0-paramiko\_2.0.0}, frente a los 81 banners distintos de los
+clientes legítimos, entre ellos OpenSSH, libssh2 y PuTTY. Y la entropía de la
+carga útil es de $7.4$ en ambas clases, así que el contenido cifrado es
+literalmente indistinguible.
+
+El modelo no ve el cifrado, ve la herramienta. Es una firma real, porque el
+atacante efectivamente usa \texttt{paramiko}, pero no es una firma del ataque
+sino del programa con que se ejecutó. Cualquier atacante que cambie de
+biblioteca la anula, sin modificar su técnica.
+
+Este hallazgo es el que obliga a todo lo que sigue. Si un macro-F1 alto puede
+sostenerse sobre una firma así, la métrica por sí sola no informa de nada, y hay
+que someter cada vista a la pregunta de qué ocurre cuando esa firma desaparece.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F24_saliency}
+  \caption[Dónde mira el byte-CNN]{Importancia atribuida a cada posición de la
+  entrada. El 31.1\% se concentra en los primeros 48 bytes, que es donde vive el
+  \emph{banner} en claro; el cuerpo cifrado apenas contribuye.}
+  \label{fig:saliency}
+\end{figure}
+
+\section{Robustez ante evasión}
+\label{sec:evasion}
+
+La forma directa de responder a esa pregunta es hacer lo que haría un atacante:
+sobrescribir los primeros bytes de cada flujo de ataque con los de un cliente
+legítimo, dejando intacto todo lo demás. Es una modificación barata, cambiar de
+biblioteca o falsear una cabecera, y no altera la técnica del ataque.
+
+\subsection*{Una advertencia metodológica que costó un experimento}
+
+Un test de evasión solo es válido si el ataque sigue siendo el ataque después de
+la modificación. Es fácil pasarlo por alto, y en este trabajo se pasó.
+
+El primer experimento sobrescribía 160 bytes en todos los días. En el día web el
+\emph{recall} del \emph{payload} se desplomaba de $0.9672$ a $0.0164$, lo
+que parecía demostrar que también allí la firma era una huella de herramienta.
+Inspeccionando los flujos modificados quedó claro que el resultado no
+significaba eso: en 160 bytes cabe la inyección SQL entera, de modo que
+sobrescribirlos no evade la detección, destruye el ataque. El modelo no fallaba,
+acertaba al no marcar como ataque un flujo que ya no lo era.
+
+Repetido con un prefijo de 24 bytes, que no llega a la carga maliciosa, el
+\emph{payload} aguanta en $0.8852$. La conclusión se invierte por completo.
+
+\subsection*{El resultado}
+
+La tabla~\ref{tab:evasion-cap5} recoge el experimento corregido.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Robustez del payload ante camuflaje de los primeros bytes]{\emph{Recall}
+  de la clase de ataque antes y después del camuflaje.}
+  \label{tab:evasion-cap5}
+  \begin{tabular}{lrr}
+    \toprule
+    \textbf{Día y ataque} & \textbf{Original} & \textbf{Camuflado} \\
+    \midrule
+    02-03 Bot (Ares)     & 1.0000 & 0.0025 \\
+    20-02 DDoS-LOIC      & 1.0000 & 0.0108 \\
+    16-02 DoS-Hulk       & 1.0000 & 0.0417 \\
+    14-02 SSH-Bruteforce & 1.0000 & 0.3538 \\
+    22-02 Web (24 B)     & 0.9672 & 0.8852 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La tabla recoge solo el análisis de contenido, porque es el único al que el
+camuflaje afecta: las vistas de metadatos y de conducta no leen un byte del
+contenido y sus valores no cambian. La figura~\ref{fig:evasion} las incluye para
+verlo.
+
+Cuatro de los cinco días se desploman. En el día de la botnet el \emph{payload}
+pasa de detectarlo todo a detectar el $0.25\%$, y en el DDoS al $1\%$. El
+único que resiste es el día web, y resiste porque allí los bytes que el modelo
+usa son el ataque: \texttt{union select} no es un rastro de la inyección SQL, es
+la inyección.
+
+Esto rescata un resultado que el capítulo anterior había dejado en suspenso. La
+comparación de macro-F1 no distinguía el día web de los demás, porque todos
+saturaban, pero la evasión sí lo distingue: es el único régimen en que el
+análisis de contenido detecta el ataque y no la herramienta. Lo que la métrica
+no separaba, la perturbación lo separa.
+
+\subsection*{Invariante no es lo mismo que robusto}
+
+Las vistas de metadatos y de conducta no cambian un solo valor bajo este ataque,
+sencillamente porque no leen el contenido. Es lo que es:
+una ventaja estructural frente a esta forma concreta de evasión, no una virtud
+general. Un atacante que espacie deliberadamente sus conexiones ataca la ráfaga
+con el mismo esfuerzo, y este trabajo no ha medido ese caso. Afirmar que la
+conducta es robusta sin más sería el tipo de conclusión que el capítulo anterior
+desmonta.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F39_evasion_interarribo}
+  \caption[El camuflaje separa la huella de herramienta del contenido
+  real]{\emph{Recall} de la clase de ataque tras sobrescribir los primeros bytes
+  de cada flujo, por vista y por día. El panel derecho compara los dos tamaños
+  de prefijo ensayados en el día web.}
+  \label{fig:evasion}
+\end{figure}
+
+\section{Cómo combinar las dos ramas}
+\label{sec:fusion}
+
+Antes de seguir perturbando queda resolver una cuestión de diseño que el
+capítulo~\ref{ch:estado-del-arte} planteaba sin datos: si se dispone de una vista
+de contenido y otra de flujo, dónde conviene unirlas.
+
+Se comparan tres estrategias. La primera es la fusión ingenua, que concatena las
+entradas crudas y entrega el vector resultante a un único modelo. La segunda es
+la fusión tardía de dos ramas, en la que cada rama construye su representación
+por separado y la concatenación ocurre en el espacio de representaciones, justo
+antes de la capa de decisión. La tercera es cada rama por separado, como
+referencia.
+
+La figura~\ref{fig:arquitectura} muestra la segunda, que es la que este trabajo
+emplea, y señala dónde habría concatenado la primera.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F03_arquitectura}
+  \caption[El híbrido de dos ramas]{El híbrido de dos ramas con fusión tardía.
+  Cada vista se convierte primero en su propia representación y la unión ocurre
+  entre representaciones de dimensión comparable, no entre entradas crudas.}
+  \label{fig:arquitectura}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption[Estrategias de fusión de las dos vistas]{Macro-F1 \emph{out-of-fold}
+  de cada rama por separado y de las dos estrategias de fusión, en los dos
+  regímenes opuestos y en la tarea multitipo del día web.}
+  \label{tab:fusion}
+  \footnotesize
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Estrategia} & \textbf{14-02 SSH} & \textbf{22-02 web} & \textbf{22-02 multitipo} \\
+    \midrule
+    Solo payload (byte-CNN)   & 0.9988 & 1.0000 & 0.9679 \\
+    Solo metadatos (MLP)      & 0.9931 & 0.9184 & 0.7695 \\
+    Fusión ingenua (concatenar entradas) & 0.9988 & 0.9803 & 0.9009 \\
+    Fusión tardía (dos ramas) & 1.0000 & 0.9975 & 0.9628 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La tabla~\ref{tab:fusion} deja ver el problema de la fusión ingenua. En el día
+web pasa de $1.0000$, que es lo que consigue la rama de contenido sola, a
+$0.9803$; y en la tarea multitipo, de $0.9679$ a $0.9009$. Fusionar las
+entradas hace el resultado peor que la mejor de sus partes.
+
+El motivo es de escala. El histograma aporta 257 dimensiones, que son las 256
+frecuencias de byte más la entropía, y los metadatos aportan cuatro escalares, de
+modo que al concatenarlos los segundos quedan diluidos y el modelo
+acaba comportándose como si solo tuviera la vista de contenido, con la
+desventaja añadida de un espacio de entrada mayor y peor condicionado. La fusión
+tardía evita el problema porque cada rama se entrena para producir una
+representación de dimensión comparable antes de unirlas.
+
+Es un detalle de diseño con una consecuencia práctica: la ventaja del enfoque
+híbrido no se obtiene por el hecho de disponer de las dos fuentes, sino por
+unirlas en el sitio correcto. Un trabajo que concatene entradas y concluya que la
+fusión no aporta nada habrá medido la implementación, no la idea.
+
+\section{Detección sin etiquetas de ataque}
+\label{sec:anomalia}
+
+Todo lo anterior supone un conjunto de entrenamiento con ataques etiquetados. Esa
+suposición es fuerte, porque un ataque nuevo, por definición, no está etiquetado
+en ninguna parte. La alternativa es la detección de anomalías: entrenar
+únicamente con tráfico benigno y marcar lo que se desvía.
+
+Se ensayan dos métodos clásicos, un Isolation Forest y un autoencoder, sobre las
+mismas vistas y en tres regímenes. Se reporta el área bajo la curva ROC, porque
+en este planteamiento no hay umbral natural y la métrica debe ser independiente
+de él.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Detección de anomalías entrenada solo con tráfico benigno]{Área bajo
+  la curva ROC. IF es Isolation Forest y AE es autoencoder. El azar corresponde a
+  $0.5$.}
+  \label{tab:anomalia}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Régimen} & \textbf{Payload (IF)} & \textbf{Payload (AE)} & \textbf{Conducta (IF)} \\
+    \midrule
+    Cifrado (14-02, SSH)     & 0.6946 & 0.5683 & 1.0000 \\
+    En claro (22-02, web)    & 0.7580 & 0.7920 & 0.9121 \\
+    Volumétrico (16-02, DoS) & 0.3411 & 0.4791 & 0.5402 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La tabla~\ref{tab:anomalia} dice tres cosas. La primera es que sin etiquetas de
+ataque la tesis del trabajo se replica: cada régimen esconde su anomalía en una
+vista distinta, y la conducta resuelve el cifrado con $1.0000$ mientras el
+contenido se queda en $0.6946$.
+
+La segunda es que el régimen volumétrico es intrínsecamente difícil sin
+etiquetas. Las tres combinaciones quedan por debajo de $0.55$, y el
+Isolation Forest sobre contenido baja de $0.5$, es decir, ordena peor que el
+azar. El motivo es que las peticiones que genera Hulk son sintácticamente más
+regulares que el tráfico web legítimo, y un detector de anomalías
+entrenado con lo normal las considera menos anómalas que el propio tráfico
+normal.
+
+La tercera es una advertencia sobre las cifras del resto del capítulo. Los
+valores supervisados que aparecen en toda la memoria por encima de $0.97$
+dependen de disponer de ataques etiquetados del mismo tipo. Cuando esa
+suposición se retira, el rendimiento cae entre veinte y cincuenta puntos según el
+régimen. Es la distancia real entre lo que se mide en un conjunto de datos
+etiquetado y lo que un detector encontraría ante una amenaza nueva.
+
+\section{Generalización entre días del mismo régimen}
+\label{sec:cross-dia}
+
+La segunda perturbación es cambiar de día. Se toman los tres días volumétricos
+del 2018, que son el 16-02, el 15-02 y el 20-02, y se forman los seis pares
+dirigidos posibles: se entrena en uno y se evalúa en otro, con el mismo régimen
+de ataque pero distinta herramienta, distinta víctima y distinto tráfico de
+fondo.
+
+\subsection*{Una lección metodológica antes que un resultado}
+
+Este hallazgo se enunció tres veces y cambió las tres. Merece contarse así
+porque la lección vale tanto como el número.
+
+La primera versión, con dos días, afirmaba que el modelo más expresivo
+generaliza peor, porque el byte-CNN colapsaba y el histograma no. La segunda, al
+añadir el tercer día y completar los seis pares, mostró que la regla era falsa:
+se había inducido una ley con dos observaciones. La tercera llegó al cambiar de
+métrica, y mostró que lo que colapsaba no era lo que parecía.
+
+\subsection*{El diagnóstico: no falla la representación, falla el umbral}
+
+Con umbral fijo en $0.5$, el byte-CNN da un macro-F1 de $0.3333$ en cuatro
+de los seis pares. Ese valor no es simplemente malo: es exactamente lo que
+produce un clasificador que asigna todo a una sola clase. Su \emph{recall} de
+ataque es $0.0000$. Leído así, el modelo no transfiere en absoluto.
+
+El AUC dice otra cosa. La tabla~\ref{tab:calibracion} lo pone al lado.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Transferencia entre días: umbral fijo frente a AUC]{Entrenar en un
+  día volumétrico y evaluar en otro. El macro-F1 con umbral fijo sugiere
+  colapso; el AUC muestra que el orden de las puntuaciones se conserva.}
+  % @fuente [x for p in ["16-02 -> 20-02", "20-02 -> 16-02", "15-02 -> 20-02", "20-02 -> 15-02", "15-02 -> 16-02", "16-02 -> 15-02"] for x in R.CALIBRACION_CRUZADA[p]["byte-CNN"]]
+  \label{tab:calibracion}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Par (entreno $\rightarrow$ prueba)} & \textbf{AUC-ROC} & \textbf{F1 (umbral 0.5)} & \textbf{F1 (umbral óptimo)} \\
+    \midrule
+    16-02 $\rightarrow$ 20-02 & 0.9724 & 0.0000 & 0.9849 \\
+    20-02 $\rightarrow$ 16-02 & 0.9886 & 0.0000 & 0.9918 \\
+    15-02 $\rightarrow$ 20-02 & 0.9758 & 0.0000 & 0.9872 \\
+    20-02 $\rightarrow$ 15-02 & 0.9854 & 0.0000 & 0.9899 \\
+    15-02 $\rightarrow$ 16-02 & 1.0000 & 1.0000 & 1.0000 \\
+    16-02 $\rightarrow$ 15-02 & 1.0000 & 0.9581 & 0.9999 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La figura~\ref{fig:calibracion} contrapone ambas lecturas. El AUC no baja de
+$0.9724$ en ninguno de los seis pares. El modelo ordena correctamente los
+flujos del día nuevo, porque los de ataque reciben puntuaciones más altas que
+los benignos, y sin embargo, con el umbral heredado del día de entrenamiento, no
+acierta ni uno. La representación transfiere; lo que no transfiere es dónde
+cortar.
+
+Es una distinción con consecuencias prácticas inmediatas, y es invisible para
+cualquier métrica que dependa de un umbral fijo. Un trabajo que hubiese
+reportado solo el F1 habría concluido que el byte-CNN no generaliza entre días,
+y habría estado equivocado.
+
+\subsection{De diagnóstico a receta: recalibración}
+
+Si el problema es el umbral, la solución es recalibrar. Se aplica escalado de
+Platt \cite{Platt1999}, que ajusta una función
+$\sigma(A \cdot \mathrm{logit}(p) + B)$ sobre unas pocas muestras etiquetadas
+del día de destino, sin reentrenar el modelo. La pregunta operativa es cuántas
+etiquetas hacen falta, y la respuesta son veinticinco. La
+tabla~\ref{tab:recalibracion} recoge los cuatro pares que colapsaban.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Recalibración con 25 etiquetas del día de destino]{Macro-F1 y error
+  de calibración esperado (ECE) antes y después de aplicar escalado de Platt con
+  25 flujos etiquetados del día de destino. No se reentrena el modelo.}
+  % @fuente [x for p in ["16-02 -> 20-02", "20-02 -> 16-02", "15-02 -> 20-02", "20-02 -> 15-02"] for x in (R.RECALIBRACION[p]["sin"][0], R.RECALIBRACION[p]["sin"][2], R.RECALIBRACION[p]["n25"][0], R.RECALIBRACION[p]["n25"][2])]
+  \label{tab:recalibracion}
+  \begin{tabular}{lrrrr}
+    \toprule
+    & \multicolumn{2}{c}{\textbf{Sin recalibrar}} & \multicolumn{2}{c}{\textbf{Con 25 etiquetas}} \\
+    \cmidrule(lr){2-3} \cmidrule(lr){4-5}
+    \textbf{Par} & \textbf{F1} & \textbf{ECE} & \textbf{F1} & \textbf{ECE} \\
+    \midrule
+    16-02 $\rightarrow$ 20-02 & 0.3333 & 0.4973 & 0.9750 & 0.0216 \\
+    20-02 $\rightarrow$ 16-02 & 0.3333 & 0.4991 & 0.9912 & 0.0087 \\
+    15-02 $\rightarrow$ 20-02 & 0.3332 & 0.4967 & 0.9828 & 0.0170 \\
+    20-02 $\rightarrow$ 15-02 & 0.3333 & 0.4993 & 0.9698 & 0.0216 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La figura~\ref{fig:recalibracion} contrapone las dos situaciones en los seis
+pares. El error de calibración cae de aproximadamente $0.499$,
+que es el máximo posible y corresponde a un modelo sistemáticamente seguro y
+sistemáticamente equivocado, a menos de $0.022$. Ampliar de 25 a 1.000
+etiquetas apenas mejora nada, salvo en el par más difícil, donde el
+\emph{recall} sube de $0.9571$ a $0.9997$.
+
+Traducido a despliegue: cuando un detector entrenado en unas condiciones se
+lleva a otras, no hay que reentrenarlo, basta con que un analista etiquete
+veinticinco conexiones. Es una recomendación concreta, barata y verificable, y
+sale directamente del diagnóstico anterior.
+
+El mismo fenómeno ha sido descrito de forma independiente en la literatura
+reciente \cite{CrossDatasetTransformer2026}, que lo corrige también con escalado
+de Platt. Que dos trabajos lleguen por separado al mismo diagnóstico refuerza
+que no es un artefacto de este montaje.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F38_calibracion_cruzada}
+  \caption[Lo que el AUC revela y el umbral fijo esconde]{Para cada par de días,
+  el macro-F1 con umbral fijo frente al AUC. El primero sugiere colapso; el
+  segundo muestra que el orden de las puntuaciones se conserva.}
+  \label{fig:calibracion}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F41_recalibracion}
+  \caption[Recalibración con pocas etiquetas]{Macro-F1 y error de calibración
+  antes y después de recalibrar con 25 flujos etiquetados del día de destino, en
+  los seis pares de días. Los cuatro pares que colapsaban se recuperan y el error
+  de calibración cae de su valor máximo a casi cero.}
+  \label{fig:recalibracion}
+\end{figure}
+
+\section{Una vista para la periodicidad, y qué la hace funcionar}
+\label{sec:interarribo}
+
+El capítulo~\ref{ch:regimenes} deja una promesa abierta. La firma de la botnet
+vive en el intervalo entre conexiones, y ninguna de las tres vistas del protocolo
+lo calcula: la ráfaga cuenta cuántas conexiones hay en una ventana, no cada
+cuánto llegan. Esta sección cierra esa promesa añadiendo una cuarta vista y
+midiendo qué aporta.
+
+La vista de inter-arribo son seis características por flujo, todas derivadas de
+los intervalos entre conexiones consecutivas del mismo origen: el intervalo
+anterior y el siguiente, la media y el coeficiente de variación en una ventana
+local, una medida de regularidad y la fracción de intervalos cercanos a la
+mediana. Se calculan desde el mismo fichero que las demás, sin volver a procesar
+las capturas.
+
+\subsection*{Qué aporta como grupo}
+
+\begin{table}[htbp]
+  \centering
+  \caption[Aportación de cada grupo de características]{Macro-F1
+  \emph{out-of-fold} en el día de la botnet, combinando los metadatos de flujo
+  con cada grupo temporal y con los grupos por separado.}
+  \label{tab:ablacion-grupos}
+  \begin{tabular}{lr}
+    \toprule
+    \textbf{Conjunto de características} & \textbf{Macro-F1} \\
+    \midrule
+    Metadatos de flujo                   & 0.9985 \\
+    Metadatos + ráfaga                   & 0.9991 \\
+    Metadatos + inter-arribo             & 0.9989 \\
+    Metadatos + ráfaga + inter-arribo    & 0.9989 \\
+    \midrule
+    Inter-arribo solo (6 características) & 0.9914 \\
+    Ráfaga sola (3 características)       & 0.9909 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La tabla~\ref{tab:ablacion-grupos} obliga a una conclusión modesta y hay que
+darla como tal. Sobre los metadatos, la ráfaga y el inter-arribo aportan
+prácticamente lo mismo, con $0.9991$ frente a $0.9989$, y combinarlos no
+mejora. Es decir, la vista nueva no supera a la que ya había.
+
+Su interés está en otro sitio. Seis características temporales por sí solas, sin
+mirar un byte de contenido ni un escalar de tamaño, alcanzan $0.9914$ en el día
+de la botnet. Eso confirma que la periodicidad es una firma real y suficiente, y
+que el trabajo la estaba detectando por otra vía. Y como no leen el contenido,
+son invariantes ante el camuflaje de bytes de la sección~\ref{sec:evasion}, igual
+que la ráfaga.
+
+\subsection*{Qué característica hace el trabajo, y una corrección}
+
+La ablación individual, en la tabla~\ref{tab:ablacion-inter}, mide dos cosas por
+cada característica: cuánto se pierde al quitarla del conjunto y cuánto consigue
+ella sola.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Ablación de las características de inter-arribo]{Para cada
+  característica, macro-F1 del conjunto sin ella, caída resultante, y macro-F1
+  que consigue por sí sola. Las seis juntas dan $0.9914$.}
+  \label{tab:ablacion-inter}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Característica} & \textbf{Sin ella} & \textbf{Caída} & \textbf{Ella sola} \\
+    \midrule
+    \texttt{dt\_prev}            & 0.9896 & $+0.0018$ & 0.9669 \\
+    \texttt{dt\_next}            & 0.9900 & $+0.0014$ & 0.9641 \\
+    \texttt{media\_local}        & 0.9789 & $+0.0125$ & 0.9638 \\
+    \texttt{cv\_local}           & 0.9835 & $+0.0079$ & 0.9355 \\
+    \texttt{regularidad}         & 0.9949 & $-0.0035$ & 0.9062 \\
+    \texttt{frac\_cerca\_mediana} & 0.9887 & $+0.0026$ & 0.9336 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+El resultado corrigió una afirmación previa de este trabajo. Se había escrito que
+el coeficiente de variación local era la característica del \emph{beaconing},
+porque mide precisamente la regularidad de los intervalos y esa es la intuición
+evidente. La ablación lo desmiente por partida doble: la característica cuya
+ausencia más cuesta es la media local, con una caída de $0.0125$ frente a
+$0.0079$, y la que mejor funciona en solitario es el intervalo anterior en
+crudo, con $0.9669$.
+
+Hay además una característica que estorba. Quitar \texttt{regularidad} mejora el
+resultado en $0.0035$, y en solitario es la peor de las seis con $0.9062$.
+Es redundante con el coeficiente de variación y añade ruido, así que debería
+eliminarse del conjunto.
+
+La lectura de conjunto es que la señal está en los intervalos mismos y no en los
+estadísticos que se construyen sobre ellos. Un solo intervalo en crudo alcanza
+$0.9669$, y las cinco características derivadas añaden en total dos puntos y
+medio. Es un recordatorio útil frente a la tentación de multiplicar
+características derivadas: cada una necesita medirse antes de
+incorporarla, porque alguna puede restar.
+
+\section{La fuga de identificadores de red}
+\label{sec:fuga}
+
+La tercera perturbación descubre un problema que las dos anteriores no podían
+ver, y que además sobrevive a la validación entre días.
+
+Si a la vista de metadatos se le añaden las direcciones IP y el puerto de
+origen, algo que buena parte de la literatura hace porque están disponibles en el
+registro de flujo, el resultado entre días se vuelve perfecto: macro-F1 de
+$1.0000$ en cinco de los seis pares con Random Forest y con XGBoost.
+
+Parece una mejora y es un atajo, como cuantifica la figura~\ref{fig:fuga}. El
+mecanismo se ve al mirar el direccionamiento del laboratorio: de las 18
+direcciones atacantes que aparecen en los seis días, 15 empiezan por
+\texttt{18.}, y las 12 víctimas están todas en \texttt{172.31.69.x}. Un modelo
+que aprenda que un origen \texttt{18.x} implica ataque transfiere perfectamente
+entre cualquier par de días del conjunto, sin haber aprendido nada sobre
+ataques.
+
+La parte que importa metodológicamente es que la validación entre días no
+detecta el atajo. Al contrario, lo premia. Solo se rompe al cambiar de conjunto
+de datos, donde el direccionamiento es distinto, y allí la vista de metadatos
+cae al azar. Es el mismo problema que Engelen y sus coautores documentan en
+CIC-IDS2017 \cite{Engelen2021}, aquí medido sobre CSE-CIC-IDS2018 y con una
+consecuencia añadida: ninguna de las validaciones habituales dentro de un mismo
+conjunto de datos lo detecta.
+
+Un detalle refuerza el riesgo. Dos direcciones se reutilizan entre días con
+papeles distintos: \texttt{18.219.211.138} es atacante de DoS-GoldenEye el 15-02
+y canal de mando de la botnet el 02-03, y \texttt{18.218.115.60} ejecuta los
+ataques web el 22-02 y es uno de los diez orígenes del DDoS el 20-02. Un modelo
+que memorice direcciones acertará en ambos días por el motivo equivocado.
+
+Por eso este trabajo excluye las direcciones y los puertos de todas las vistas
+del capítulo~\ref{ch:regimenes}, y por eso ese mismo capítulo incluye la
+dirección IP únicamente como control positivo declarado, nunca como
+característica.
+
+\section{Generalización entre conjuntos de datos}
+\label{sec:cross-dataset}
+
+La cuarta perturbación es la más exigente: entrenar en CSE-CIC-IDS2018 y evaluar
+en CIC-IDS2017, sobre el ataque análogo. Cambia la red, el direccionamiento, el
+tráfico de fondo y el año. Por indicación de la dirección del trabajo esta línea
+quedó como validación complementaria, pero el capítulo la necesita, porque es la
+única que rompe la fuga de la sección anterior.
+
+Entrenando en 2018 y evaluando en 2017, el byte-CNN alcanza $0.9914$ en el
+régimen web, $0.9990$ en el cifrado y $0.9656$ en el volumétrico, mientras
+la vista de metadatos cae a $0.5287$, $0.5139$ y $0.4291$, es decir, al
+azar. La lectura inmediata sería que el contenido generaliza y los metadatos no.
+
+Después de la sección~\ref{sec:saliency} esa lectura ya no basta, y hay que
+preguntar por qué transfiere cada caso:
+
+\begin{itemize}
+  \item El régimen web transfiere por contenido intrínseco. Las cadenas
+        \texttt{union select} y \texttt{<script>} aparecen en ambos conjuntos
+        porque son el ataque. Es transferencia robusta.
+  \item El cifrado transfiere porque los atacantes de ambos años usan la misma
+        biblioteca y emiten el mismo banner \texttt{paramiko}. Es un
+        \emph{fingerprint} compartido, y por tanto evadible.
+  \item El volumétrico, igual, por los \emph{User-Agent} y las cabeceras de Hulk
+        y GoldenEye, comunes a ambos años.
+\end{itemize}
+
+Dos de los tres transfieren por el motivo equivocado. Un \emph{fingerprint}
+compartido entre conjuntos de datos sigue siendo un \emph{fingerprint}: que
+generalice no lo hace robusto, solo lo hace consistentemente frágil.
+
+\subsection*{Una asimetría honesta}
+
+La dirección contraria no funciona. Entrenando en 2017 y evaluando en 2018, el
+byte-CNN colapsa: $0.5000$ en el régimen web, donde predice una sola clase,
+$0.6051$ en el cifrado y $0.6710$ en el volumétrico. El motivo es la
+diversidad, porque los ataques de 2018 son más numerosos y más variados, de modo
+que un modelo entrenado allí ha visto más y transfiere, mientras que al revés no.
+
+Es un argumento a favor de entrenar con la mayor variedad disponible, y también
+un recordatorio de que la generalización cruzada no es simétrica: reportar solo
+la dirección que funciona sería una forma elegante de mentir.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F40_fuga_ips}
+  \caption[El tamaño del atajo de las direcciones IP]{Macro-F1 entre días al
+  añadir las direcciones y el puerto de origen a la vista de metadatos. La
+  validación entre días no detecta el atajo: lo premia.}
+  \label{fig:fuga}
+\end{figure}
+
+\section{¿Mejoran las arquitecturas del estado del arte?}
+\label{sec:sota-contraste}
+
+Queda una pregunta que atraviesa todo el trabajo: si los resultados no son
+mejores, cabe preguntarse si es porque los modelos empleados se quedan cortos.
+Para responderla se implementaron dos arquitecturas del estado del arte y se
+compararon con las propias a presupuesto de parámetros comparable.
+
+\subsection*{El transformer nunca gana}
+
+Sobre la secuencia de bytes se comparan byte-CNN, byte-LSTM y byte-Transformer.
+El resultado depende de la cantidad de datos y no favorece al modelo más
+moderno. Con pocos datos, en el día web con 203 flujos por clase, el
+\emph{transformer} es peor: $0.9778$ frente a $0.9975$ del byte-CNN. Con
+datos suficientes, en el día de la botnet con 4.000 por clase, empata en
+$1.0000$. Y siempre cuesta entre 36 y 49 veces más tiempo, con 3.191 segundos
+frente a 65 en el día de la botnet.
+
+La figura~\ref{fig:arquitecturas} contrapone rendimiento y coste. El byte-LSTM,
+por su parte, se hunde con pocos datos hasta $0.8296$, lo que es coherente con
+lo que mostró la interpretabilidad: la firma vive en los primeros bytes, y una
+convolución con agrupación máxima la localiza mejor que una recurrencia que ha
+de recorrer toda la secuencia.
+
+\subsection*{La atención cruzada empata usando el doble de parámetros}
+
+En la fusión de las dos ramas, la atención cruzada iguala a la fusión tardía,
+con $0.9828$ frente a $0.9828$ en el día web y $0.9999$ frente a
+$1.0000$ en el de la botnet, empleando 72.066 parámetros frente a 31.042, es
+decir, 2.3 veces más. No hay ganancia que justifique el coste.
+
+\subsection*{Y no es por falta de ajuste}
+
+Cabría objetar que los modelos propios están mejor ajustados que los tomados de
+la literatura. Se comprobó con una búsqueda aleatoria de hiperparámetros de 30
+configuraciones, validada únicamente dentro del día de entrenamiento para no
+contaminar la evaluación. La carencia era real pero pequeña: el mejor ajuste
+mejora el MLP en $+0.0275$ en el día web y en $+0.0063$ en el volumétrico, y
+a XGBoost en $+0.0122$ y $+0.0005$. Nada de eso cambia ninguna conclusión.
+
+Esa comprobación tiene un alcance acotado. La búsqueda cubre los dos
+modelos tabulares, el perceptrón multicapa y XGBoost, sobre los que se apoya la
+mayor parte de las mediciones del trabajo. Las cinco redes profundas conservan
+hiperparámetros fijos: el argumento vale para el ajuste de
+los modelos tabulares y no es una búsqueda exhaustiva sobre las arquitecturas
+profundas. Lo que sí queda igualado entre ellas, que es lo que la comparación
+del apartado mide, es el presupuesto de parámetros.
+
+\subsection*{Qué se sigue de esto}
+
+Ninguna de las arquitecturas avanzadas mejora los resultados de este trabajo
+sobre estos datos, y dos de ellas cuestan entre 2 y 49 veces más. No es un
+argumento contra el estado del arte, cuyos modelos están pensados para escalas y
+escenarios mayores, y esta comparación no los refuta en general.
+
+Es, en cambio, la confirmación de lo que el capítulo~\ref{ch:regimenes} había
+medido por otra vía. Si dentro del día la evaluación está saturada, no queda
+margen que una arquitectura mejor pueda recoger. El cuello de botella de este
+problema no está en la capacidad del modelo, sino en la calidad de la etiqueta,
+en los atajos que el conjunto de datos permite y en cómo se mide la
+transferencia. Que es donde este trabajo ha intervenido.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F42_arquitecturas}
+  \caption[Arquitecturas propias frente a las del estado del arte]{Macro-F1 y
+  coste computacional a presupuesto de parámetros comparable. El
+  \emph{transformer} nunca gana y siempre cuesta más.}
+  \label{fig:arquitecturas}
+\end{figure}

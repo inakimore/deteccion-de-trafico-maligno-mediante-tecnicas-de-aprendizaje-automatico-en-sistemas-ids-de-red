@@ -1,0 +1,502 @@
+% =====================================================================
+% CAPITULO 3 - DEL PCAP AL DATASET
+% =====================================================================
+% Capitulo de metodo. Su tesis: dos de los hallazgos centrales del trabajo no
+% son de modelado sino de esta fase, y ninguno se habria detectado mirando
+% metricas.
+%
+% ESTILO (31-ago): sin negritas en el texto corrido, sin incisos entre rayas
+% salvo cuando la frase los pida, y sin florituras.
+% =====================================================================
+
+Los dos capítulos siguientes miden. Este explica sobre qué. Describe cómo se
+pasa de una captura de red en bruto a un conjunto de ejemplos etiquetados, y se
+detiene especialmente en la parte que suele darse por hecha, que es de dónde
+sale la etiqueta.
+
+Esa insistencia no es de trámite. Dos de los hallazgos centrales del trabajo, que
+un ataque entero fuera invisible por un problema de extracción y que el tráfico
+benigno de referencia estuviera contaminado por el propio atacante, no son
+problemas de modelado sino de esta fase. Ninguno se habría detectado mirando
+métricas.
+
+\section{Visión general del pipeline}
+\label{sec:pipeline}
+
+El proceso tiene cuatro etapas, resumidas en la figura~\ref{fig:pipeline}, y
+cada una descarta información de forma irreversible, así que cada descarte
+necesita justificación.
+
+\begin{enumerate}
+  \item Saneado de la captura. Las capturas del CSE-CIC-IDS2018 contienen
+        registros que \texttt{libpcap} rechaza. Se reescribe la captura antes de
+        procesarla. La sección~\ref{sec:zeek} explica por qué este paso no es
+        opcional.
+  \item Extracción con Zeek. Un \emph{script} propio recorre la captura y emite,
+        por cada conexión TCP, su carga útil de aplicación agregada junto con los
+        metadatos de la conexión.
+  \item Vectorización. Cada conexión se convierte en varias representaciones
+        numéricas, las vistas que los capítulos siguientes comparan, y se
+        almacena en un fichero \texttt{.npz} autocontenido.
+  \item Etiquetado. A cada conexión se le asigna la clase correspondiente a
+        partir de una \emph{ground-truth} reconstruida sobre las propias
+        capturas, no tomada de la documentación del conjunto de datos.
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F01_pipeline}
+  \caption[El pipeline de extracción]{Las cuatro etapas del proceso, desde la
+  captura en bruto hasta el conjunto de ejemplos etiquetados.}
+  \label{fig:pipeline}
+\end{figure}
+
+Dos decisiones atraviesan todo el proceso y se fijan aquí.
+
+\paragraph{La unidad de ejemplo es la conexión TCP.} No el paquete. Cada ejemplo
+corresponde a una conexión completa, identificada por el \texttt{uid} que asigna
+Zeek. Un ataque se manifiesta a lo largo de una conversación, y tratar cada
+paquete como ejemplo independiente haría que un mismo evento apareciera
+centenares de veces, repartido además entre entrenamiento y prueba.
+
+\paragraph{El fichero de salida es autocontenido.} Contiene, por flujo, el
+histograma de bytes, la secuencia de bytes, la entropía, la 5-tupla de
+direcciones y puertos, la marca de tiempo y la etiqueta. Esto permitió más
+adelante derivar vistas nuevas, la ráfaga por origen y el inter-arribo, sin
+volver a procesar las capturas. Resultó decisivo, porque los datos intermedios
+ocupan decenas de gigabytes por día y se borran tras la vectorización.
+
+\section{Extracción del payload con Zeek}
+\label{sec:zeek}
+
+Zeek \cite{Zeek} se emplea como analizador de protocolos. Identifica el servicio
+por contenido, reensambla el flujo TCP y expone la carga útil de aplicación.
+Sobre él se ejecuta un \emph{script} propio que, por cada conexión, acumula
+hasta 64 kilobytes de carga útil y los emite junto con el servicio identificado,
+la 5-tupla, el número de paquetes, los bytes totales y la duración.
+
+La elección de Zeek frente a alternativas como CICFlowMeter, que es la
+herramienta con la que se generan los ficheros de características que acompañan
+al conjunto de datos, responde a dos motivos. El primero es que Zeek da acceso a
+la carga útil, y no solo a estadísticos agregados, que es el objeto de este
+trabajo. El segundo es que su identificación de servicio se basa en el contenido
+y no en el puerto, lo que permite la corrección que describe la
+sección~\ref{sec:representacion}.
+
+\subsection*{El saneado no es opcional, y descubrirlo costó un ataque entero}
+
+Durante las primeras semanas del trabajo el ataque de fuerza bruta contra SSH no
+aparecía en los datos extraídos. El día se procesaba sin errores, Zeek terminaba
+correctamente y el resultado contenía únicamente tráfico benigno.
+
+La causa era una truncatura silenciosa. Zeek se detenía a las 18:05 UTC al
+encontrar un registro que \texttt{libpcap} rechaza, y descartaba sin avisar todo
+lo que venía después, que era precisamente la tarde en que ocurría el ataque. No
+se emitía ningún mensaje de error: el proceso terminaba con éxito sobre una
+fracción de la captura. Al reescribir la captura antes de procesarla se recuperan
+los 2.9 millones de paquetes reales y el ataque aparece completo.
+
+La lección se incorporó al procedimiento como una comprobación obligatoria, que
+consiste en validar que la cobertura temporal de lo extraído coincide con el
+rango real de la captura. Un fallo así no produce un error, produce un conjunto
+de datos plausible y equivocado, que es mucho peor.
+
+\subsection*{Procesamiento por lotes bajo restricción de disco}
+
+Los días completos del CSE-CIC-IDS2018 se distribuyen en centenares de capturas
+que suman decenas de gigabytes, y los ficheros intermedios que genera Zeek ocupan
+aproximadamente 1.48 veces lo que ocupa la captura de origen. Un día completo no
+cabe en disco si se procesa de una vez.
+
+El procesamiento se organiza por lotes. Se ordenan las capturas de mayor a menor,
+se procesa cada una y se elimina la captura en cuanto su salida está verificada,
+comprobando antes que el número de bytes extraídos es el esperado. El proceso se
+detiene de forma limpia si el espacio libre baja de un umbral, y nunca borra nada
+si la extracción ha fallado.
+
+Es una restricción de ingeniería, pero condicionó qué días se pudieron procesar y
+merece constar. La figura~\ref{fig:volumen} da la escala del trabajo en número de
+capturas, gigabytes procesados y flujos resultantes.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F10_volumen_procesado}
+  \caption[Escala del procesamiento]{Capturas, volumen en disco y flujos
+  extraídos por día.}
+  \label{fig:volumen}
+\end{figure}
+
+\section{Representación vectorial del flujo}
+\label{sec:representacion}
+
+De cada conexión se derivan cinco representaciones, que la
+figura~\ref{fig:anatomia} resume. Las tres primeras son las que los capítulos
+siguientes comparan como vistas; las dos últimas se añadieron al identificar
+regímenes que las anteriores no capturaban.
+
+Vale la pena situarlas antes en la taxonomía clásica de la detección de intrusiones,
+que distingue tres tipos de características \cite{Lee2000}. Las
+\emph{intrínsecas} se derivan de la cabecera de los paquetes de una misma
+conexión y la describen por sí sola: duración, número de paquetes y bytes
+transportados. Las de \emph{contenido} se derivan de la carga útil, es decir, de
+lo que la conexión transporta por encima de la capa de transporte. Las de
+\emph{tráfico} no se calculan sobre una conexión sino sobre un grupo de ellas,
+agregando por origen o por destino en una ventana temporal.
+
+Las cinco representaciones de este trabajo se reparten sobre esos tres tipos. El
+histograma de bytes y la secuencia de bytes son de contenido, y a ellas se añaden
+los diecinueve descriptores interpretables que se describen más abajo. Los
+metadatos de flujo son intrínsecos. La ráfaga por origen y el inter-arribo son de
+tráfico, porque ninguna de las dos se puede calcular mirando una sola conexión.
+
+Hay una colisión de nombres que declarar para que no confunda. Lo que
+esta memoria llama metadatos de flujo son características intrínsecas en la
+taxonomía anterior, no de tráfico: describen la conexión aislada. El contraste
+que atraviesa los capítulos siguientes, entre contenido y flujo, es por tanto un
+contraste entre el segundo tipo y el primero, y las características de tráfico
+propiamente dichas entran en la vista conductual.
+
+Antes de enumerarlas, una precisión sobre qué se calculan las dos primeras,
+porque la unidad es la conexión y no el paquete. El \emph{script} de Zeek emite
+una fila por cada segmento TCP que transporte datos, en el orden en que aparece
+en la captura y en ambos sentidos. La vectorización recorre esas filas agrupando
+por \texttt{uid} y concatena las cargas útiles en ese mismo orden cronológico,
+sin separar la dirección cliente-servidor de la inversa. Sobre esa concatenación
+se calculan las dos representaciones de contenido: el histograma acumula hasta 64
+kilobytes por conexión, que es un tope de memoria, y la secuencia se queda con
+los primeros 256 bytes, rellenando con ceros las conexiones más cortas.
+
+Los 256 bytes de la secuencia no son, por tanto, el primer paquete, sino el
+comienzo del diálogo. En la práctica suelen abarcar el primer segmento con datos
+y parte del siguiente, que es donde vive la cabecera del protocolo de aplicación:
+el \emph{banner} SSH, la línea de petición HTTP o el saludo TLS. La
+sección~\ref{sec:saliency} muestra que es justamente ahí donde el modelo mira.
+
+\begin{description}
+  \item[Histograma de bytes.] Frecuencia de cada uno de los 256 valores posibles
+        en la carga útil agregada, normalizada, más la entropía de esa
+        distribución. Es una representación sin orden: descarta la secuencia y
+        conserva la composición. Sigue la tradición de PAYL \cite{Wang2004}.
+  \item[Secuencia de bytes.] Los primeros 256 bytes de la carga útil, en orden,
+        como enteros. Conserva la estructura local que el histograma pierde, y es
+        la entrada de los modelos convolucionales y recurrentes.
+  \item[Metadatos de flujo.] Cuatro escalares de la conexión: número de paquetes,
+        bytes totales, longitud de la carga útil y duración. Se les aplica
+        $\log(1+x)$ porque sus distribuciones tienen colas muy pesadas.
+  \item[Ráfaga por origen.] Número de conexiones que el mismo origen ha abierto
+        en el segundo, los cinco segundos y los treinta segundos previos. Se
+        calcula de forma causal, mirando solo al pasado, porque un detector en
+        línea no puede consultar el futuro.
+  \item[Inter-arribo.] Seis características derivadas de los intervalos entre
+        conexiones consecutivas del mismo origen: el intervalo anterior, el
+        siguiente, la media y el coeficiente de variación en una ventana local,
+        una medida de regularidad y la fracción de intervalos cercanos a la
+        mediana.
+\end{description}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F04_anatomia_flujo}
+  \caption[De una conexión TCP a los vectores del modelo]{Las representaciones
+  que se derivan de una misma conexión.}
+  \label{fig:anatomia}
+\end{figure}
+
+\subsection*{Descriptores del payload tomados de la literatura}
+
+Al histograma y la secuencia se añade un tercer conjunto de características sobre
+la carga útil, esta vez interpretables y tomadas de la literatura de detección
+por contenido. Son diecinueve descriptores agrupados en cuatro familias: medidas
+de aleatoriedad, como la entropía de Shannon normalizada, el índice de
+coincidencia o el ratio de compresión; medidas de forma de la distribución, como
+la frecuencia del byte dominante, la masa de los cuatro dominantes o la distancia
+a la distribución uniforme; medidas sobre 2-gramas, en la línea de Anagram
+\cite{Wang2006}; y medidas léxicas, como la fracción de bytes imprimibles, de
+alfanuméricos, de caracteres de control o de bytes no ASCII, orientadas a
+detectar inyecciones y \emph{shellcode}.
+
+La motivación es doble. Por un lado permiten unir el análisis de contenido a las
+características que produce Zeek en un mismo vector de dimensión manejable. Por
+otro son interpretables una a una, cosa que los 256 valores del histograma no
+son. El resultado, que el capítulo~\ref{ch:generalizacion} recoge, es que los
+diecinueve descriptores rinden aproximadamente igual que las 257 dimensiones del
+histograma.
+
+\subsection*{Qué se excluye deliberadamente}
+
+Las direcciones IP y los números de puerto no forman parte de ninguna vista. La
+razón se desarrolla en la sección~\ref{sec:fuga}: en este conjunto de datos son
+un atajo casi perfecto y además sobreviven a la validación entre días. Se
+excluyen desde el principio, salvo en un experimento donde se incluyen
+deliberadamente y como control declarado, para medir el tamaño del atajo.
+
+La exclusión no es una precaución conservadora, y se enuncia como lo que
+es: usar la dirección de origen como característica no es correcto. No describe
+el ataque sino la identidad de quien lo lanzó en este laboratorio concreto, de
+modo que un modelo que la use no aprende a detectar nada, aprende una lista de
+culpables. Y esa lista no es transferible: cambia con la red, con el escenario y
+con el atacante, así que un resultado obtenido con ella no dice nada sobre lo que
+el detector haría en otro sitio. Lo mismo vale para el puerto, que depende de la
+configuración de cada red. Cuando en esta memoria aparecen direcciones, lo hacen
+como identificador para etiquetar y auditar, nunca como entrada del modelo,
+excepto en el control positivo declarado de la sección~\ref{sec:por-que-satura} y
+en la medición del atajo de la sección~\ref{sec:fuga}, que existen precisamente
+para cuantificar el error que se estaría cometiendo.
+
+\subsection*{La selección por servicio, medida}
+
+El servicio se toma del análisis de contenido de Zeek y no del número de puerto.
+Esta corrección se aplicó a mitad del trabajo y obligó a reevaluar todos los
+resultados anteriores.
+
+La pregunta que quedaba abierta era cuánto cambiaba en la práctica, y se puede
+medir: basta comparar, flujo a flujo, la etiqueta de servicio que da el contenido
+con la que daría el puerto. La tabla~\ref{tab:servicio-puerto} recoge el
+resultado sobre los días en que ambas son comparables.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Acuerdo entre el servicio identificado por contenido y el puerto]{Para
+  cada día, número de flujos en que ambas identificaciones son comparables,
+  cuántas coinciden y cuántas se contradicen.}
+  \label{tab:servicio-puerto}
+  \footnotesize
+  \begin{tabular}{lrrrr}
+    \toprule
+    \textbf{Día} & \textbf{Comparables} & \textbf{Confirman} & \textbf{Acuerdo} & \textbf{Contradicen} \\
+    \midrule
+    14-02 (SSH)      & 2.200.888 & 2.200.419 & 99.98\,\% &   469 \\
+    22-02 (Web)      & 2.769.964 & 2.769.217 & 99.97\,\% &   747 \\
+    16-02 (DoS)      & 4.038.401 & 4.037.957 & 99.99\,\% &   444 \\
+    04-07 2017 (SSH) &    98.154 &    98.033 & 99.88\,\% &   121 \\
+    05-07 2017 (DoS) &   260.796 &   259.410 & 99.47\,\% & 1.386 \\
+    06-07 2017 (Web) &    81.352 &    81.330 & 99.97\,\% &    22 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+El acuerdo supera el 99.4\,\% en los seis días, así que ningún resultado
+previo cambia. El valor de la corrección es metodológico: los resultados dejan de
+depender de una convención de configuración que en otra red podría ser distinta.
+La figura~\ref{fig:servicios} muestra, por día, qué protocolos aparecen
+identificados por contenido.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F07_servicios_por_dia}
+  \caption[Servicios presentes en cada día]{Protocolos identificados por
+  contenido en cada uno de los días procesados.}
+  \label{fig:servicios}
+\end{figure}
+
+\section{El problema del etiquetado: el CSV no trae direcciones}
+\label{sec:etiquetado}
+
+El CSE-CIC-IDS2018 se distribuye con ficheros CSV de características de flujo ya
+etiquetadas. Podría parecer que basta con cruzarlos con las capturas, pero no
+basta, por una razón simple: esos CSV no incluyen las direcciones IP. Traen
+marcas de tiempo y características agregadas, pero no permiten identificar qué
+conexión de la captura corresponde a cada fila.
+
+La etiqueta, por tanto, hay que reconstruirla. El procedimiento adoptado modela
+cada ataque como un par $\{\text{atacante}, \text{víctima}\}:\text{puerto}$
+acompañado de una ventana temporal, y asigna la clase de ataque a toda conexión
+que encaje en ambos criterios. Los ataques y sus parámetros se declaran en un
+módulo único, para que la \emph{ground-truth} sea explícita, versionada y
+revisable, en lugar de estar dispersa por los \emph{scripts} de evaluación.
+
+El algoritmo~\ref{alg:etiquetado} recoge el procedimiento. Su aparente
+sencillez esconde los dos puntos donde este trabajo se equivocó: la comprobación
+de la ventana en la línea 4, cuyos límites hay que verificar contra la actividad
+real y no contra la documentación, y el hecho de que un flujo que no encaja en
+ningún ataque se etiqueta como benigno por defecto, en la línea 9, que es
+exactamente lo que contamina la clase negativa cuando la ventana se queda corta.
+
+\begin{algorithm}[htbp]
+\caption{Etiquetado de un flujo a partir de la \emph{ground-truth} verificada}
+\label{alg:etiquetado}
+\begin{algorithmic}[1]
+\Require Flujo $f$ con origen $o$, destino $d$, puerto $p$ y marca de tiempo $t$;
+         conjunto de ataques $A$ del día
+\Ensure Etiqueta de $f$
+\ForAll{ataque $a \in A$}
+  \State $\mathit{par} \gets \{o, d\}$
+  \If{$\mathit{par} \subseteq a.\mathit{direcciones}$ \textbf{y} $p = a.\mathit{puerto}$}
+    \If{$a.\mathit{inicio} \le t \le a.\mathit{fin}$}
+      \State \Return $a.\mathit{etiqueta}$
+    \EndIf
+  \EndIf
+\EndFor
+\State \Return \textsc{Benigno}
+\end{algorithmic}
+\end{algorithm}
+
+El modelo tiene un límite que declarar, porque determinó qué días se
+pudieron usar. Un ataque en el que un único origen contacta con centenares de
+destinos distintos no se puede expresar como un par de direcciones, y ese es
+exactamente el caso del reconocimiento de la Infiltration. Por eso ese día se
+analiza en la sección~\ref{sec:limite} sin construir un conjunto etiquetado.
+
+\subsection*{La zona horaria como fuente de error}
+
+Las capturas están en UTC y la documentación del conjunto de datos en hora local,
+con un desfase que no viene declarado de forma inequívoca. Un error de una hora
+desplaza la ventana y reetiqueta miles de flujos en ambos sentidos, marcando como
+ataque tráfico legítimo y como benigno actividad del atacante.
+
+El desfase se verificó empíricamente en lugar de asumirse. Se localizó el primer
+paquete del atacante en la captura y se comparó con la hora declarada. Para el
+CSE-CIC-IDS2018 resulta ser UTC$-$4: una anotación de las 08:31
+locales corresponde a las 12:30 UTC en la captura. Para el CIC-IDS2017, empleado
+en la validación complementaria, resulta ser UTC$-$3. Son distintos, y darlo por
+supuesto habría corrompido el etiquetado de tres días.
+
+\section{Ground-truth verificada empíricamente}
+\label{sec:ground-truth}
+
+Esta sección recoge la aportación metodológica del capítulo. La
+\emph{ground-truth} de los siete días no se tomó de la documentación oficial,
+sino que se reconstruyó sobre las capturas y se verificó una por una. La
+tabla~\ref{tab:ground-truth} recoge el resultado.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Ground-truth verificada sobre las capturas]{\emph{Ground-truth}
+  verificada empíricamente sobre las capturas, no tomada de la documentación del
+  conjunto de datos. Horas en hora local (UTC$-$4).}
+  \label{tab:ground-truth}
+  \footnotesize
+  \begin{tabular}{llll}
+    \toprule
+    \textbf{Día} & \textbf{Ataque} & \textbf{Atacante} & \textbf{Víctima} \\
+    \midrule
+    14-02 & SSH-Bruteforce      & \texttt{13.58.98.64}      & \texttt{172.31.69.25:22} \\
+    15-02 & GoldenEye/Slowloris & \texttt{18.219.211.138} y \texttt{18.217.165.70} & \texttt{172.31.69.25:80} \\
+    16-02 & Hulk/SlowHTTPTest   & \texttt{18.219.193.20}    & \texttt{172.31.69.25:80} \\
+    20-02 & DDoS-LOIC-HTTP      & 10 direcciones            & \texttt{172.31.69.25:80} \\
+    22-02 & Web (BF/XSS/SQLi)   & \texttt{18.218.115.60}    & \texttt{172.31.69.28:80} \\
+    02-03 & Bot (Ares)          & \texttt{18.219.211.138} (C2) & 10 \emph{bots} en \texttt{172.31.69.x} \\
+    28-02 & Infiltration        & \texttt{13.58.225.34} (C2)   & \texttt{172.31.69.24} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Cómo se localiza a un atacante sin conocerlo}
+
+El procedimiento no parte de la dirección documentada, precisamente para poder
+contrastarla. Se ordenan los orígenes de la captura por número de conexiones,
+porque los ataques de fuerza bruta y volumétricos dominan por varios órdenes de
+magnitud, y se contrasta el candidato con la ventana declarada.
+
+Cuando no hay un origen dominante el procedimiento se invierte. Es el caso del
+día de la botnet, donde el canal de mando y control mueve poco tráfico y queda
+enterrado entre los orígenes legítimos: allí se extrajo primero la carga útil y
+se buscó en ella el patrón del canal, para identificar después la dirección. El
+día de la Infiltration exigió un tercer procedimiento, sobre el registro de
+conexiones y no sobre la carga útil, porque el reconocimiento no exporta datos de
+aplicación.
+
+\subsection*{La documentación oficial falló tres veces}
+
+Este es el resultado que justifica el esfuerzo. En tres de los siete días la
+documentación del conjunto de datos no coincide con lo que contienen las
+capturas.
+
+En el día 14-02 la dirección del atacante SSH documentada no es la que aparece
+en la captura, y además la ventana declarada no cubre toda la actividad continua
+del atacante.
+
+En el día 16-02 el ataque SlowHTTPTest se dirige al puerto 21 y no al 80, que es
+lo que indica la documentación. Es también el ataque que no deja ni un flujo con
+carga útil analizable.
+
+En el día 02-03 la documentación parte la actividad de la botnet en dos franjas
+horarias. Medida sobre la captura, la actividad es continua, con un hueco máximo
+de 32.6 segundos. Etiquetar según la documentación habría marcado como benignas
+varias horas de tráfico de la botnet.
+
+No es una crítica al conjunto de datos, que es una contribución valiosa y de uso
+generalizado. Es una constatación con consecuencias prácticas: una etiqueta
+heredada sin verificar es una fuente de error tan seria como un modelo mal
+diseñado, y a diferencia de este último no se manifiesta como un fallo, sino como
+un resultado creíble. La literatura reciente ha llegado a la misma conclusión al
+reetiquetar CIC-IDS2017 \cite{Engelen2021}.
+
+\subsection*{El desbalanceo que resulta}
+
+La figura~\ref{fig:composicion} muestra la composición de clases de cada día una
+vez aplicada la etiqueta verificada. El desbalanceo es extremo y muy desigual
+entre días: el día web tiene 203 flujos de ataque entre 2.7 millones, mientras el
+del DoS-Hulk tiene 1.8 millones de ataque sobre 4 millones de flujos. Es la razón
+por la que el capítulo~\ref{ch:regimenes} balancea 1:1 antes de comparar y no
+reporta exactitud global.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F06_composicion_clases}
+  \caption[Composición de clases por día]{Flujos de ataque frente a flujos
+  benignos en cada día, tras aplicar la \emph{ground-truth} verificada.}
+  \label{fig:composicion}
+\end{figure}
+
+\section{Honestidad del conjunto benigno}
+\label{sec:benigno}
+
+Queda un error del que este trabajo fue víctima dos veces, y que merece una
+sección propia porque es el más difícil de detectar de todos los descritos.
+
+Cuando la ventana etiquetada no cubre toda la actividad del atacante, las
+conexiones que quedan fuera no desaparecen: se quedan en el conjunto de datos
+etiquetadas como benignas. El resultado es un conjunto de referencia contaminado
+por el propio ataque, y cualquier comparación hecha sobre él enfrenta el ataque
+consigo mismo.
+
+La figura~\ref{fig:error-ventana} ilustra el mecanismo, y ocurrió dos veces. En
+el día del SSH-Bruteforce, 1.589 de los 2.022 flujos etiquetados como benignos
+del puerto 22 eran del propio atacante, y solo 433 procedían de terceros. En el
+día del DoS-Hulk, el flujo de ataque es continuo hasta las 17:58:22 UTC mientras
+la ventana terminaba a las 17:52:59, con lo que quedaban fuera 740.821 flujos
+del atacante, el 65.1\,\% de todo el tráfico HTTP etiquetado como benigno de ese
+día.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F09_error_ventana}
+  \caption[El error de límite de ventana]{Actividad del atacante frente a la
+  ventana etiquetada. Las conexiones que quedan fuera no desaparecen: pasan a
+  engrosar la clase benigna.}
+  \label{fig:error-ventana}
+\end{figure}
+
+\paragraph{Por qué no se detecta mirando las métricas.} Porque los resultados que
+produce son plausibles. Con el benigno contaminado, ninguna vista superaba el
+$0.78$ en el día del SSH, y ese techo se interpretó durante semanas como una
+propiedad del problema, como si los metadatos no dieran para más, cuando era un
+artefacto del etiquetado. Un número bajo no levanta sospechas del mismo modo que
+un $1.0000$, y ahí está la trampa.
+
+\paragraph{Cómo se detecta.} Auditando el origen de cada flujo de la clase
+negativa, y comprobando que la ventana etiquetada cubre la actividad continua del
+atacante sobre el conjunto completo y no sobre una captura suelta. La
+figura~\ref{fig:composicion-benigno} descompone el tráfico etiquetado como
+benigno según su procedencia real. La corrección consistió en arreglar las
+ventanas y reetiquetar esos flujos como lo que eran, actividad del ataque.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F15_composicion_benigno}
+  \caption[De qué estaba hecho el tráfico benigno]{Descomposición del tráfico
+  etiquetado como benigno según su procedencia real.}
+  \label{fig:composicion-benigno}
+\end{figure}
+
+\paragraph{Una consecuencia para la reproducibilidad.} Al corregir el etiquetado
+en el propio conjunto de datos, el escenario contaminado deja de ser
+reconstruible. Las cifras que en su momento lo describieron son históricas y no
+comparables con las de los capítulos siguientes, y así se declaran cada vez que
+se mencionan.
+
+Esta es, junto con la verificación de la \emph{ground-truth}, la razón por la que
+este capítulo ocupa el lugar que ocupa en la memoria. Los dos capítulos que
+siguen no tendrían valor sin él, porque medirían con precisión sobre datos
+equivocados.

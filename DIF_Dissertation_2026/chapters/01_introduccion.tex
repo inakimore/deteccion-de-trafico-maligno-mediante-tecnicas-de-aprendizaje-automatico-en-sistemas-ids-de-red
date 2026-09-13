@@ -1,0 +1,240 @@
+% =====================================================================
+% CAPITULO 1 - INTRODUCCION
+% =====================================================================
+% Los objetivos especificos de 1.3.2 estan numerados y son verificables a
+% proposito: la seccion 6.1 los cierra uno a uno con la evidencia concreta.
+% Si se toca uno aqui, hay que tocar su cierre alli.
+%
+% ESTILO (31-ago): sin negritas dentro del texto corrido, sin incisos entre
+% rayas salvo cuando la frase los pida de verdad, y sin florituras.
+% =====================================================================
+
+\section{Contexto y motivación}
+\label{sec:contexto}
+
+Un sistema de detección de intrusiones en red analiza el tráfico en busca de
+actividad maliciosa. Durante décadas lo hizo mediante firmas: reglas que
+describen patrones de bytes asociados a amenazas ya conocidas
+\cite{Swarnkar2023}. El método es preciso y su coste de ejecución es bajo, pero
+tiene un límite que el mantenimiento no resuelve, porque solo detecta lo que
+alguien ha analizado y catalogado previamente.
+
+Ese límite se ha agravado por tres motivos. El tráfico circula hoy
+mayoritariamente cifrado, así que el contenido que la firma inspeccionaría
+resulta indistinguible del ruido. El malware es polimórfico y altera su
+apariencia entre infecciones sin cambiar su función. Y las herramientas de
+ataque se han vuelto accesibles, lo que multiplica el número de variantes en
+circulación.
+
+Por eso el campo ha girado hacia el aprendizaje automático, que induce el
+criterio de detección a partir de los datos en lugar de recibirlo escrito. La
+ventaja esperada es la capacidad de generalizar a variantes no vistas. El coste
+son los falsos positivos, la opacidad del modelo y la dependencia de datos
+etiquetados de calidad. Este trabajo se ocupa sobre todo de esto último, que
+resultó ser el problema más costoso.
+
+\section{El problema: medir la detección es más difícil que hacerla}
+\label{sec:problema}
+
+El planteamiento inicial de este trabajo era el habitual en la literatura de
+detección híbrida y se puede enunciar como una tensión entre dos fuentes de
+información.
+
+Por un lado están las características de flujo: cuántos paquetes componen la
+conexión, cuántos bytes transporta y cuánto dura. Están siempre disponibles,
+funcionan igual con tráfico cifrado y son ciegas al contenido. Por otro está la
+carga útil, es decir, los bytes que la conexión transporta. Contienen el ataque
+cuando el ataque está en los datos, y no aportan nada cuando el tráfico va
+cifrado o cuando el ataque no llega a intercambiar contenido.
+
+La hipótesis de partida era que cada tipo de ataque escondería su firma en una
+de esas dos fuentes, de manera que ninguna bastaría por sí sola y el enfoque
+híbrido quedaría justificado por esa vía. Para comprobarlo se seleccionaron seis
+días del conjunto CSE-CIC-IDS2018 que cubren cuatro regímenes distintos: fuerza
+bruta cifrada, ataques web en claro, denegación de servicio volumétrica y una
+botnet con actividad periódica.
+
+Medida con cuidado, esa hipótesis no se sostiene, y el motivo es el hallazgo
+central de esta memoria. Dentro de un mismo día, cualquiera de las
+representaciones detecta cualquiera de los ataques con un macro-F1 por encima de
+$0.97$, de modo que la comparación está saturada y no permite distinguirlas.
+Un resultado alto obtenido así no informa sobre la capacidad de detección.
+
+El problema que este trabajo acaba abordando está, por tanto, un nivel más
+abajo: cómo se mide si un detector ha aprendido lo que se cree que ha aprendido.
+La respuesta que propone es que hay que perturbar las condiciones de evaluación,
+dejando que el atacante camufle sus bytes, cambiando de día o cambiando de
+conjunto de datos, porque es ahí donde las representaciones dejan de ser
+equivalentes.
+
+La tesis del trabajo sobrevive, pero apoyada en otra evidencia: ninguna vista
+basta por sí sola, y quienes lo demuestran son la prueba de evasión, la
+transferencia entre dominios y los ataques que no dejan contenido que analizar.
+
+\section{Objetivos}
+\label{sec:objetivos}
+
+\subsection{Objetivo general}
+
+Evaluar, sobre datos reales de red y con un protocolo experimental explícito, en
+qué condiciones el análisis de la carga útil aporta información que las
+características de flujo no capturan, y en cuáles no; y determinar qué
+representación resiste cuando cambian las condiciones de evaluación.
+
+\subsection{Objetivos específicos}
+
+Se enuncian de forma verificable, para poder cerrarlos uno a uno en la
+sección~\ref{sec:objetivos-cumplidos}.
+
+\begin{enumerate}
+  \item[\textbf{O1}] Construir un \emph{pipeline} reproducible que convierta
+        capturas de red en bruto en un conjunto de ejemplos etiquetados, con la
+        conexión TCP como unidad y varias representaciones por conexión.
+  \item[\textbf{O2}] Establecer una \emph{ground-truth} verificada sobre las
+        capturas, en lugar de heredarla de la documentación del conjunto de
+        datos, y documentar las discrepancias que aparezcan.
+  \item[\textbf{O3}] Comparar las representaciones con un único protocolo, es
+        decir, con la misma métrica, el mismo balanceo y el mismo tratamiento
+        del tráfico benigno, sobre varios regímenes de ataque, y establecer si
+        la comparación discrimina entre ellas.
+  \item[\textbf{O4}] Determinar por qué acierta cada representación, y no solo
+        cuánto, mediante interpretabilidad y pruebas de evasión activas.
+  \item[\textbf{O5}] Medir la generalización entre días del mismo régimen y
+        entre conjuntos de datos distintos, e identificar qué componente del
+        modelo falla cuando falla.
+  \item[\textbf{O6}] Contrastar arquitecturas del estado del arte con las
+        propias a presupuesto de parámetros comparable, para determinar si el
+        límite de los resultados está en la capacidad del modelo.
+\end{enumerate}
+
+\section{Aportaciones de este trabajo}
+\label{sec:aportaciones}
+
+Hay que separar lo que se toma de la literatura de lo que este trabajo añade,
+porque la aportación no es una arquitectura nueva.
+
+\subsection*{Lo que se toma del estado del arte}
+
+Las representaciones de la carga útil siguen la tradición de PAYL y Anagram
+\cite{Wang2004, Wang2006}. El modelo convolucional sobre bytes sigue la línea de
+\emph{Deep Packet} \cite{Lotfollahi2020}. El \emph{transformer} sobre bytes y la
+fusión por atención cruzada se implementan siguiendo sus referencias
+respectivas. El escalado de Platt \cite{Platt1999} y el error de calibración
+esperado \cite{Guo2017} son métodos estándar. La crítica a los conjuntos de
+datos públicos parte de Engelen \emph{et al.} \cite{Engelen2021}. Todo ello se
+señala en el punto donde se usa.
+
+\subsection*{Lo que aporta este trabajo}
+
+Son cinco resultados, agrupados por lo que cada uno permite afirmar.
+
+El primero es una \emph{ground-truth} verificada sobre las capturas para siete
+días, que corrige la documentación oficial en tres de ellos: la dirección del
+atacante SSH, el puerto del ataque lento y la continuidad de la actividad de la
+botnet (sección~\ref{sec:ground-truth}).
+
+El segundo es la constatación de que la evaluación intra-día está saturada y no
+discrimina entre representaciones (sección~\ref{sec:saturacion}). Se propuso una
+causa, que un único host atacante por día permitiera memorizar su identidad, y
+se contrastó y refutó con un experimento de exclusión de atacantes que incluye
+control positivo (sección~\ref{sec:por-que-satura}).
+
+El tercero es la medición de que el éxito del análisis de contenido suele ser
+una huella de la herramienta y no del ataque, demostrada por interpretabilidad y
+por evasión (secciones~\ref{sec:saliency} y~\ref{sec:evasion}).
+
+El cuarto es el diagnóstico de que, entre dominios, lo que se rompe primero es
+la calibración y no la representación, junto con una receta que cuesta 25
+etiquetas (sección~\ref{sec:cross-dia}).
+
+El quinto es la constatación de que la validación entre días no detecta la fuga
+de identificadores de red, sino que la premia (sección~\ref{sec:fuga}).
+
+A ello se añade un resultado negativo que también es una aportación: ninguna de
+las arquitecturas avanzadas contrastadas mejora los resultados sobre estos
+datos, y dos de ellas cuestan entre 2 y 49 veces más
+(sección~\ref{sec:sota-contraste}). El límite no está en la capacidad del
+modelo.
+
+\subsection*{Cómo se llegó a esos resultados}
+
+Queda decir algo sobre el método de trabajo, porque las cinco aportaciones
+tienen un origen común y no es la planificación inicial. Ninguna estaba prevista.
+Todas aparecieron al desconfiar de un resultado que ya funcionaba.
+
+El patrón se repite y esta memoria lo documenta en lugar de esconderlo. Un
+primer modelo alcanzaba el 99.95\,\% de exactitud, y auditarlo contra el tráfico
+que un detector vería a diario reveló una tasa de falsos positivos del 96\,\%. El
+tráfico benigno de referencia estaba contaminado por el propio atacante, dos
+veces, y el error no se manifestaba como un fallo sino como un número plausible.
+La saturación intra-día se propuso explicar mediante la memorización del host
+atacante, se diseñó el experimento capaz de tumbar esa explicación, se le añadió
+un control positivo para comprobar que el experimento era sensible, y la
+explicación cayó. Una regla sobre la generalización entre días se enunció con dos
+observaciones, resultó falsa al añadir la tercera y volvió a cambiar al medirla
+con la métrica adecuada. Y varias cifras se citaron durante semanas como macro-F1
+cuando eran exactitud.
+
+La sección~\ref{sec:lecciones} recoge esos episodios uno a uno, con lo que cada
+uno enseñó. Están en la memoria porque un resultado que nadie ha intentado
+tumbar no es un resultado, y porque la herramienta de verificación descrita más
+abajo nació precisamente de ellos.
+
+\section{Código y reproducibilidad}
+\label{sec:repositorio}
+
+Todo el código con el que se obtuvieron los resultados de esta memoria está
+disponible en un repositorio público:
+
+\begin{center}
+\small
+\url{https://github.com/inakimore/deteccion-de-trafico-maligno-mediante-tecnicas-de-aprendizaje-automatico-en-sistemas-ids-de-red}
+\end{center}
+
+Contiene el \emph{pipeline} completo, desde el saneado de la captura hasta el
+etiquetado, las implementaciones de los modelos, los \emph{scripts} de cada
+experimento y los informes que producen. El fichero \texttt{README.md} detalla
+cómo ejecutar cada paso.
+
+Merece señalarse una decisión de organización, porque sostiene lo que la
+memoria afirma. Ninguna cifra de este documento está escrita a mano sin
+respaldo: todas proceden de un módulo único, \texttt{resultados.py}, que recoge
+lo que producen los experimentos, y una herramienta de verificación recorre los
+capítulos y las tablas comprobando que cada número aparece allí. Esa herramienta
+tiene además su propio test negativo, que le inyecta un error deliberado y
+comprueba que lo detecta, para que un resultado en verde no pueda ser un
+falso verde. La sección~\ref{sec:lecciones} explica de qué errores nació.
+
+Lo que el repositorio no contiene son las capturas en bruto, que ocupan unos 150
+gigabytes y se descargan del organismo que las distribuye \cite{CSECICIDS2018}.
+
+\section{Estructura de la memoria}
+\label{sec:estructura}
+
+El capítulo~\ref{ch:estado-del-arte} sitúa el trabajo en su campo. Repasa las
+familias de modelos empleadas en detección de intrusiones, indicando en cada
+caso si esta memoria la ha contrastado, y dedica la segunda mitad a los
+conjuntos de datos públicos y a sus defectos documentados, que es donde enlaza
+con los capítulos de resultados.
+
+El capítulo~\ref{ch:metodologia} describe cómo se pasa de una captura en bruto a
+un conjunto de ejemplos etiquetados, y se detiene en la parte que suele darse
+por supuesta: de dónde sale la etiqueta. Contiene la verificación de la
+\emph{ground-truth} y el episodio del tráfico benigno contaminado.
+
+El capítulo~\ref{ch:regimenes} mide. Compara las tres representaciones sobre los
+seis días con un único protocolo, muestra que la comparación está saturada,
+contrasta y refuta la explicación que primero se propuso para esa saturación, y
+termina en los ataques que el análisis de contenido no puede ver.
+
+El capítulo~\ref{ch:generalizacion} inventaria primero las técnicas de
+aprendizaje automático empleadas, tanto las propias como las tomadas del estado
+del arte para contrastarlas, y responde después a la pregunta que el capítulo
+anterior deja abierta: si dentro del día no se distinguen, cuál resiste cuando
+cambian las condiciones. Aplica cuatro perturbaciones de exigencia creciente,
+que son la interpretabilidad, la evasión, el cambio de día y el cambio de
+conjunto de datos, y cierra contrastando las arquitecturas del estado del arte.
+
+El capítulo~\ref{ch:conclusiones} cierra los objetivos uno a uno, recoge las
+lecciones metodológicas, entre ellas las veces que este trabajo se corrigió a sí
+mismo, declara las limitaciones y propone las líneas de continuación.

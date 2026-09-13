@@ -1,0 +1,217 @@
+% =====================================================================
+% CAPITULO 6 - CONCLUSIONES
+% =====================================================================
+% 6.1 cierra los objetivos O1-O6 de la seccion 1.3.2 uno a uno. Si alli se
+% toca un objetivo, hay que tocar su cierre aqui.
+%
+% ESTILO (31-ago): sin negritas en el texto corrido, sin incisos entre rayas
+% salvo cuando la frase los pida, y sin florituras.
+% =====================================================================
+
+\section{Cumplimiento de los objetivos}
+\label{sec:objetivos-cumplidos}
+
+Los seis objetivos de la sección~\ref{sec:objetivos} se cierran a continuación
+con la evidencia que los respalda. Dos se cumplieron de forma distinta a la
+prevista y se indica cómo.
+
+\paragraph{O1. Pipeline reproducible.} Cumplido. Siete días procesados desde la
+captura en bruto hasta el conjunto etiquetado, con la conexión TCP como unidad y
+cinco representaciones por conexión (sección~\ref{sec:pipeline}). El
+almacenamiento es autocontenido, lo que permitió derivar dos vistas nuevas, la
+ráfaga y el inter-arribo, sin volver a procesar unas capturas que ya se habían
+borrado por falta de espacio en disco.
+
+\paragraph{O2. Ground-truth verificada.} Cumplido, y con hallazgo. La etiqueta
+de los siete días se reconstruyó sobre las capturas y se contrastó con la
+documentación oficial, que resultó incorrecta en tres de ellos: la dirección del
+atacante SSH del 14-02, el puerto del ataque lento del 16-02 y la continuidad de
+la actividad de la botnet del 02-03 (sección~\ref{sec:ground-truth}).
+
+\paragraph{O3. Comparación con protocolo único.} Cumplido, con el resultado
+opuesto al esperado. Las tres representaciones se compararon con la misma
+métrica, el mismo balanceo y el mismo tratamiento del benigno sobre los seis
+días. El objetivo pedía establecer si la comparación discrimina, y la respuesta
+es que no lo hace: ninguna vista baja de $0.9186$ y el análisis de contenido no
+baja de $0.9734$ (sección~\ref{sec:saturacion},
+tabla~\ref{tab:saturacion}). El objetivo se cumple; la hipótesis que lo motivaba,
+no.
+
+\paragraph{O4. Por qué acierta cada representación.} Cumplido. La saliencia
+localiza el 31.1\,\% de la importancia en los primeros 48 bytes, que es la zona
+del \emph{banner} en claro (sección~\ref{sec:saliency}), y la prueba de evasión
+lo confirma hundiendo el \emph{recall} del contenido de $1.0000$ a $0.0025$
+en el día de la botnet, con la excepción del régimen en claro
+(sección~\ref{sec:evasion}, tabla~\ref{tab:evasion-cap5}).
+
+\paragraph{O5. Generalización.} Cumplido, y con corrección de rumbo. Se midió
+entre los seis pares de días volumétricos y entre los dos conjuntos de datos. El
+componente que falla está identificado, y no es la representación sino el
+umbral: el AUC no baja de $0.9724$ mientras el macro-F1 con umbral fijo da
+$0.3333$ (sección~\ref{sec:cross-dia}, tabla~\ref{tab:calibracion}). Se aporta
+además la receta correspondiente, que son 25 etiquetas del dominio nuevo.
+
+\paragraph{O6. Contraste con el estado del arte.} Cumplido. Se implementaron un
+\emph{transformer} sobre bytes y una red de atención cruzada, y se compararon a
+presupuesto de parámetros comparable. Ninguna mejora los resultados
+(sección~\ref{sec:sota-contraste}). El límite no está en la capacidad del
+modelo.
+
+\section{Conclusiones principales}
+\label{sec:conclusiones-principales}
+
+\paragraph{La evaluación dentro del día está saturada y no discrimina.} Es la
+conclusión que reordenó el trabajo. Sobre estos conjuntos de datos, cualquiera
+de las representaciones detecta cualquiera de los ataques, así que un
+macro-F1 alto obtenido así no mide capacidad de detección. La causa que primero
+se propuso, la memorización del host atacante, se contrastó y resultó falsa: lo
+que las vistas aprenden es la herramienta con que se generó el ataque.
+
+\paragraph{La detección robusta sí exige combinar contenido y conducta, pero
+quien lo demuestra no es la comparación de aciertos.} Lo demuestran la evasión,
+que hunde el contenido salvo donde la firma es genuina, la transferencia entre
+dominios y los ataques que no dejan contenido que analizar. La tesis inicial del
+trabajo sobrevive; la evidencia que la sostiene es otra.
+
+\paragraph{El éxito del análisis de contenido suele ser una huella de la
+herramienta, no del ataque.} Un atacante lo anula cambiando de biblioteca, sin
+modificar su técnica. La excepción es el régimen en claro, donde los bytes que
+el modelo usa son el ataque, y por eso resiste.
+
+\paragraph{Hay ataques estructuralmente invisibles al análisis de contenido.} No
+son ataques difíciles, son invisibles: el 94.4\,\% de las conexiones del
+reconocimiento de la Infiltration no lleva un solo byte de aplicación. Ninguna
+mejora del modelo lo arregla, porque no hay datos que mejorar. Es el argumento
+más fuerte a favor de combinar vistas y el único que no depende de comparar
+métricas.
+
+\paragraph{Entre dominios lo que se rompe primero es la calibración.} Y se
+arregla con 25 etiquetas, sin reentrenar. Es la conclusión con aplicación
+práctica más directa de toda la memoria.
+
+\paragraph{Sin ataques etiquetados, el rendimiento cae entre veinte y cincuenta
+puntos.} Todas las cifras supervisadas de esta memoria suponen disponer de
+ejemplos etiquetados del mismo tipo de ataque. Al retirar esa suposición y
+entrenar solo con tráfico benigno, el área bajo la curva ROC baja a $0.6946$
+en el régimen cifrado y a $0.5402$ en el volumétrico
+(sección~\ref{sec:anomalia}). Esa es la distancia real entre lo que se mide sobre
+un conjunto etiquetado y lo que un detector encontraría ante una amenaza nueva.
+
+\paragraph{El enfoque híbrido aporta por dónde se une, no por disponer de las dos
+fuentes.} Concatenar las entradas crudas da un resultado peor que la mejor de las
+dos ramas por separado, porque las 257 dimensiones del contenido diluyen los
+cuatro escalares de flujo. La fusión tardía lo evita
+(sección~\ref{sec:fusion}).
+
+\paragraph{El cuello de botella está en el dato y en el protocolo, no en el
+modelo.} Ninguna arquitectura avanzada mejoró nada, y ahora se sabe por qué: no
+quedaba margen que recoger.
+
+\section{Lecciones metodológicas}
+\label{sec:lecciones}
+
+Esta sección recoge los errores que el trabajo cometió y corrigió. Se incluye
+porque cada uno produjo un resultado plausible antes de ser detectado, y esa es
+la clase de fallo que una memoria no debería ocultar.
+
+\paragraph{El tráfico benigno contaminado, dos veces.} En el día del SSH, 1.589
+de los 2.022 flujos etiquetados como benignos eran del propio atacante; en el
+del DoS, el 65.1\,\% del benigno HTTP. Se estaba comparando el ataque consigo
+mismo. El error produjo un techo de $0.78$ que durante semanas se interpretó
+como una propiedad del problema. Un número bajo no levanta sospechas del mismo
+modo que un $1.0000$, y ahí está la trampa.
+
+\paragraph{Una ley inducida de dos puntos.} El comportamiento de la
+generalización entre días se enunció con dos días, resultó falso al añadir el
+tercero y volvió a cambiar al medirlo con AUC en lugar de con F1. Tres
+versiones, dos de ellas equivocadas. La lección tiene dos partes: no inducir
+reglas con dos observaciones, y no juzgar la transferencia con una métrica que
+dependa de un umbral fijo.
+
+\paragraph{Métricas que no eran lo que decían.} Las cifras del caso difícil se
+citaron durante semanas como macro-F1 cuando eran exactitud en validación
+cruzada, en un capítulo que dedica una sección a explicar por qué la exactitud
+engaña. Y una figura comparaba dos conjuntos de características distintos bajo
+la misma etiqueta, lo que exageraba un efecto real. Antes de citar una cifra hay
+que comprobar qué métrica es y qué contiene.
+
+\paragraph{Una intuición sobre las características que la ablación desmintió.}
+Se había escrito que el coeficiente de variación local era la característica
+clave del \emph{beaconing}, porque mide la regularidad de los intervalos y esa es
+la intuición evidente. La ablación mostró que la característica cuya ausencia más
+cuesta es la media local, que la mejor en solitario es el intervalo anterior en
+crudo, y que una de las seis, \texttt{regularidad}, empeora el conjunto
+(sección~\ref{sec:interarribo}). Medir la aportación de cada
+característica antes de darla por buena, porque alguna puede restar.
+
+\paragraph{Una hipótesis propia, contrastada y refutada.} La explicación que se
+dio a la saturación, la memorización del host atacante, era razonable y era
+falsa. Se diseñó el experimento que podía tumbarla, se verificó con un control
+positivo que el experimento era sensible, y se tumbó
+(sección~\ref{sec:por-que-satura}). Es el episodio del que más se aprendió.
+
+\paragraph{Una consecuencia práctica.} Estas correcciones motivaron una
+herramienta de verificación que contrasta cada cifra de la memoria contra la
+fuente de resultados, incluida la procedencia de las tablas. No sustituye a
+leer, pero impide que un número se quede desfasado en silencio.
+
+\section{Limitaciones}
+\label{sec:limitaciones}
+
+\begin{itemize}
+  \item Un solo conjunto de datos como eje. CIC-IDS2017 se usa como validación
+        complementaria, no como segundo eje.
+  \item Un único host atacante en cinco de los seis días. Es lo que impide
+        contrastar la hipótesis del atajo por identidad de host más allá del día
+        del DDoS. En los otros cinco queda sin contrastar.
+  \item Las características de ráfaga cuentan conexiones por origen. Aunque el
+        experimento de exclusión de atacantes muestra que generalizan a un host
+        no visto, la reserva merece declararse.
+  \item La evasión probada es de una sola clase, el camuflaje de los primeros
+        bytes. Un atacante que espacie deliberadamente sus conexiones atacaría
+        la vista conductual con el mismo esfuerzo, y ese caso no se ha medido.
+        Ser invariante no equivale a ser robusto.
+  \item La detección sin etiquetas de ataque se ensaya solo con dos métodos
+        clásicos y sobre tres días. Es suficiente para acotar la distancia
+        respecto al caso supervisado, pero no para concluir nada sobre el estado
+        del arte en detección de anomalías.
+  \item Se contrasta la arquitectura, no el preentrenamiento. La comparación con
+        el \emph{transformer} no incluye el preentrenamiento masivo, que es
+        buena parte de lo que aporta ET-BERT.
+  \item No hay día homólogo de botnet, con lo que el resultado del día 02-03 no
+        está validado contra el test cruzado que sí se aplicó al DoS.
+  \item Los grafos y los modelos de espacio de estados quedan fuera de alcance,
+        y los primeros son justamente los que capturarían el caso que este
+        trabajo identifica como su límite.
+\end{itemize}
+
+\section{Trabajo futuro}
+\label{sec:futuro}
+
+Se ordenan por retorno esperado, justificando cada línea con un resultado de
+esta memoria y no con su interés general.
+
+\paragraph{Protocolo que rompa el atajo en todos los días.} El experimento de
+exclusión de atacantes solo pudo aplicarse al día con diez orígenes. Capturas
+con varios atacantes por escenario permitirían generalizarlo, y es la
+continuación directa de la sección~\ref{sec:por-que-satura}.
+
+\paragraph{Evasión sobre la vista conductual.} Un atacante que ralentice su
+fuerza bruta es el equivalente conductual de camuflar el \emph{banner}. Hasta
+medirlo, la robustez de la ráfaga está afirmada solo frente a una clase de
+evasión.
+
+\paragraph{Redes sobre grafos para el movimiento lateral.} Lo pide el resultado
+de la sección~\ref{sec:limite}: el reconocimiento de la Infiltration es un
+patrón topológico, un origen contra 612 destinos y sin carga útil, que ninguna
+de las vistas de este trabajo puede representar.
+
+\paragraph{Recalibración continua en despliegue.} La
+sección~\ref{sec:cross-dia} muestra que 25 etiquetas bastan para reajustar el
+umbral en un dominio nuevo. Convertirlo en un procedimiento periódico es una
+línea de ingeniería con resultado medible.
+
+\paragraph{Validación entre conjuntos de datos como norma.} No como
+complemento. Es la única de las validaciones aplicadas que rompe la fuga de
+identificadores (sección~\ref{sec:fuga}), y por tanto la única que garantiza que
+lo medido sea detección y no memorización del laboratorio.

@@ -1,0 +1,76 @@
+% =====================================================================
+% ANEXO - RESULTADOS SECUNDARIOS
+% =====================================================================
+% Por indicacion del director (revision del 6-sep, punto 9): recoger aqui los
+% resultados de detalle que sostienen los capitulos sin entorpecer su lectura.
+%
+% Las tablas NO se escriben a mano: las genera scripts/figuras/gen_anexo.py
+% desde resultados.py, igual que el resto de las cifras de la memoria.
+% =====================================================================
+
+Este anexo recoge mediciones que sostienen los capítulos~\ref{ch:regimenes}
+y~\ref{ch:generalizacion} pero que no hacen falta para seguir su argumento. Se
+separan aquí por eso, y no porque sean menos fiables: proceden de las mismas
+ejecuciones y del mismo módulo de resultados que las del cuerpo.
+
+\section{El \emph{recall} detrás del macro-F1}
+
+La sección~\ref{sec:marco} declara que se reportan dos métricas, el macro-F1 y
+el \emph{recall} de la clase de ataque, y explica por qué la segunda hace falta:
+un macro-F1 mediocre puede corresponder tanto a un clasificador que se equivoca
+como a uno que no detecta nada, y solo el \emph{recall} distingue los dos casos.
+El cuerpo de la memoria recoge el macro-F1 en la tabla~\ref{tab:saturacion}; la
+tabla~\ref{tab:anexo-recall} completa el par.
+
+La lectura confirma la saturación por la segunda vía. Ninguna vista deja escapar
+más del 3\,\% de los ataques en ningún día, de modo que el diagnóstico del
+capítulo~\ref{ch:regimenes} no depende de haber elegido una métrica concreta.
+\input{chapters/appendix/tabla_anexo_recall}
+
+\section{Área bajo la curva con intervalos}
+
+La tabla~\ref{tab:anexo-auc} recoge el AUC-ROC con intervalo de confianza al
+95\,\% para los dos regímenes en que se midió con el conjunto benigno ya
+corregido. Es la métrica que la sección~\ref{sec:cross-dia} necesita, porque
+separa dos preguntas que el macro-F1 confunde: si el modelo ordena bien los
+flujos y si el umbral heredado corta donde debe.
+
+El día volumétrico no aparece porque su medición es anterior al reetiquetado, y
+las cifras de aquel escenario no son comparables con las de esta memoria por el
+motivo que expone la sección~\ref{sec:benigno}. Reportarlas junto a las demás
+sería mezclar dos conjuntos de datos distintos bajo la misma etiqueta, que es
+uno de los errores que este trabajo documenta haber cometido.
+\input{chapters/appendix/tabla_anexo_auc}
+
+\section{Detección no supervisada en términos operativos}
+
+La tabla~\ref{tab:anomalia} del cuerpo reporta el área bajo la curva, que resume
+la calidad del orden pero no dice cuántos ataques se detectarían en la práctica.
+La tabla~\ref{tab:anexo-5fpr} responde a esa pregunta: qué fracción del ataque
+se captura si se acepta un 5\,\% de falsos positivos, que es un presupuesto de
+alarmas realista para un analista.
+
+La lectura es más dura que la del área bajo la curva y conviene retenerla. En el
+régimen cifrado el análisis de contenido no captura ni un solo ataque con ese
+presupuesto, pese a un AUC de $0.6946$, mientras la conducta los captura todos.
+En el volumétrico ninguno de los tres sirve. Un AUC intermedio puede
+corresponder, por tanto, a un detector inservible en el punto de operación que
+importa, y esa es una advertencia sobre cómo se leen las cifras de detección de
+anomalías en la literatura.
+\input{chapters/appendix/tabla_anexo_5fpr}
+
+\section{Búsqueda de hiperparámetros}
+
+La sección~\ref{sec:sota-contraste} resume esta búsqueda en dos frases porque su
+conclusión es que no cambia nada. La tabla~\ref{tab:anexo-hiperparametros}
+recoge los cuatro casos completos, incluido el coste, que también informa: la
+búsqueda sobre el perceptrón multicapa en el día volumétrico tarda 2.624
+segundos frente a los 38 de XGBoost sobre el mismo problema, es decir, casi
+setenta veces más para una ganancia de $0.0063$ frente a $0.0005$.
+
+La búsqueda cubre los dos modelos tabulares y se valida únicamente dentro del
+día de entrenamiento. El día de prueba no participa en la elección, porque
+ajustar mirando el conjunto de prueba es precisamente el defecto que esta
+memoria denuncia en otros sitios.
+
+\input{chapters/appendix/tabla_anexo_hiperparametros}

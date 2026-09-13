@@ -1,0 +1,58 @@
+% =====================================================================
+% RESUMEN
+% =====================================================================
+% Todas las cifras de este resumen estan verificadas contra resultados.py por
+% scripts/figuras/verificar_memoria.py. Si se reescribe la redaccion, no se
+% deben tocar los numeros sin actualizar antes esa fuente.
+%
+% Solo en castellano: el autor confirma que la normativa no exige version
+% en euskera ni en ingles. La inglesa que hubo aqui queda en git.
+%
+% ESTILO: sin negritas en el texto corrido y sin incisos entre rayas.
+% =====================================================================
+
+Los sistemas de detección de intrusiones basados en aprendizaje automático
+alcanzan resultados casi perfectos sobre los conjuntos de datos públicos de
+referencia. Este trabajo parte de una pregunta incómoda sobre esas cifras: qué
+miden realmente. Para responderla se construye un \emph{pipeline} completo que
+convierte capturas de red en bruto en ejemplos etiquetados, en total 17.203.272
+conexiones TCP repartidas en seis días del conjunto CSE-CIC-IDS2018, y se
+comparan tres representaciones del tráfico: la distribución de bytes de la carga
+útil, las características de flujo y una vista conductual basada en la ráfaga de
+conexiones por origen. Se procesan además tres días de CIC-IDS2017 con los
+ataques análogos, que sirven para la validación entre conjuntos de datos.
+
+La primera aportación es metodológica. La \emph{ground-truth} no se hereda de la
+documentación del conjunto de datos, sino que se reconstruye sobre las propias
+capturas, y al hacerlo se detecta que la documentación oficial es incorrecta en
+tres de los siete días analizados. Se documenta además un error que este trabajo
+cometió dos veces: el tráfico benigno de referencia estaba contaminado por
+conexiones del propio atacante, lo que producía resultados plausibles y sin
+sentido.
+
+El resultado central es negativo y reordena el trabajo. Medidas las tres
+representaciones con la misma métrica y el mismo protocolo, ninguna baja de
+$0.9186$ y el análisis de contenido no baja de $0.9734$, de modo que la
+evaluación dentro de un mismo día está saturada y no discrimina entre ellas. Se
+propone una explicación, que un único host atacante por día permita memorizar su
+identidad, y se contrasta y refuta mediante un experimento de exclusión de
+atacantes con control positivo. Lo que las representaciones aprenden no es el
+host, sino la herramienta con que se generó el ataque.
+
+La discriminación aparece al perturbar las condiciones. Camuflar los primeros
+bytes de cada flujo hunde el análisis de contenido de un \emph{recall} de
+$1.0000$ a $0.0025$, salvo en el régimen en claro, donde la firma es
+contenido genuino. Entre días distintos, lo que falla no es la representación
+sino el umbral: el AUC se mantiene por encima de $0.9724$ y bastan 25 flujos
+etiquetados del dominio nuevo para recuperar el rendimiento sin reentrenar. Y se
+muestra que la validación entre días no detecta la fuga de identificadores de
+red, sino que la premia: solo el cambio a otro conjunto de datos la rompe, y al
+hacerlo revela que dos de los tres regímenes transfieren por la huella de la
+herramienta y no por el ataque.
+
+Finalmente, se contrastan dos arquitecturas del estado del arte, un
+\emph{transformer} sobre bytes y una red de atención cruzada, a presupuesto de
+parámetros comparable. Ninguna mejora los resultados, y cuestan entre 2 y 49
+veces más. La conclusión del trabajo es que, sobre estos datos, el cuello de
+botella no está en la capacidad del modelo sino en la calidad de la etiqueta y
+en el protocolo con que se mide.

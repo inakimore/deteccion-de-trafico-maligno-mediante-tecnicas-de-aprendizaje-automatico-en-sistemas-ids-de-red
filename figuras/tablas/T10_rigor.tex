@@ -1,0 +1,19 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{ROC-AUC con intervalo de confianza al 95\,\% por bootstrap.}
+  \label{tab:rigor}
+  \begin{tabular}{llrr}
+    \toprule
+    \textbf{Regimen} & \textbf{Vista} & \textbf{ROC-AUC} & \textbf{IC 95\,\%} \\
+    \midrule
+    Cifrado (14-02, SSH) & payload byte-CNN & 1.0000 & [1.0000; 1.0000] \\
+    Cifrado (14-02, SSH) & payload histograma & 0.9958 & [0.9902; 1.0000] \\
+    Cifrado (14-02, SSH) & conducta meta+rafaga & 1.0000 & [1.0000; 1.0000] \\
+    En claro (22-02, Web) & payload byte-CNN & 1.0000 & [1.0000; 1.0000] \\
+    En claro (22-02, Web) & payload histograma & 0.9949 & [0.9843; 1.0000] \\
+    En claro (22-02, Web) & conducta meta+rafaga & 0.9998 & [0.9994; 1.0000] \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{2.000 remuestreos sobre las predicciones out-of-fold. Con clases pequenas, el intervalo es más informativo que un accuracy puntual.}
+\end{table}

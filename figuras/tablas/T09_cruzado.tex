@@ -1,0 +1,19 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Generalizacion cruzada entre datasets: entrenar en uno y evaluar en el otro con el ataque analogo (0.5 = azar).}
+  \label{tab:cruzado}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Origen $\rightarrow$ destino} & \textbf{Payload (hist.)} & \textbf{Metadatos} & \textbf{byte-CNN} \\
+    \midrule
+    2018 -> 2017 (Web) & 0.8391 & 0.5287 & 0.9914 \\
+    2018 -> 2017 (SSH) & 0.7921 & 0.5139 & 0.9990 \\
+    2018 -> 2017 (DoS) & 0.4955 & 0.4291 & 0.9656 \\
+    2017 -> 2018 (Web) & --- & --- & 0.5000 \\
+    2017 -> 2018 (SSH) & 0.5855 & 0.5219 & 0.6051 \\
+    2017 -> 2018 (DoS) & 0.6012 & 0.4994 & 0.6710 \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Balanceo 1:1 en origen y destino. Por indicacion del tutor del 11 de agosto, este bloque se presenta como validacion complementaria y trabajo futuro, no como eje central.}
+\end{table}

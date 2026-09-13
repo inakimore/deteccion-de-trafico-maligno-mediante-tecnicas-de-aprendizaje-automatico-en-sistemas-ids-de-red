@@ -1,0 +1,31 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Hallazgos clave del trabajo.}
+  \label{tab:hallazgos}
+  \begin{tabular}{cp{0.26\textwidth}p{0.56\textwidth}}
+    \toprule
+    \textbf{\#} & \textbf{Hallazgo} & \textbf{Contenido} \\
+    \midrule
+    1 & Ataques sin payload & FTP-BruteForce (REJ) y DoS-SlowHTTPTest dejan 0 bytes analizables: invisibles al payload, solo detectables por flujo. \\
+    2 & Perdida silenciosa de datos & Zeek se detenia en un record intermedio corrupto; sanear el PCAP antes es obligatorio (se perdia la tarde entera del ataque SSH). \\
+    3 & El 99.96 \% es un espejismo & Con benigno diverso el modelo separa el PROTOCOLO, no el ataque: sobre SSH benigno real marca el 96 \% de los usuarios legitimos como ataque. \\
+    4 & En payload en claro el payload gana & El dia web invierte el resultado del SSH (payload 0.99 vs metadatos 0.93): cada vista gana en su regimen. \\
+    5 & El byte-CNN es el modelo mas fuerte & La convolucion aprende n-gramas de bytes; gana en deteccion y en identificar el TIPO de ataque. \\
+    6 & La fusion bien hecha es robusta & El hibrido de dos ramas con fusion tardia es \textasciitilde{}1.0 en ambos regimenes y corrige la dilucion de concatenar vistas a ciegas. \\
+    7 & El exito del payload sobre el cifrado es un fingerprint & La saliency prueba que el CNN lee el banner `paramiko` en claro, no el contenido cifrado: senal real pero evadible. \\
+    8 & La firma del DoS es volumetrica (revisado) & Con benigno genuino el payload tambien separa, pero es un fingerprint de herramienta; la rafaga agregada es la unica robusta ante evasion. \\
+    9 & La firma del payload en claro generaliza entre datasets & El byte-CNN entrenado en 2018 detecta el web de 2017 con 0.9914; los metadatos caen al azar (0.53), son especificos del laboratorio. \\
+    10 & No basta con que generalice: hay que ver por que & Solo el web transfiere por contenido intrinseco; SSH y DoS transfieren por fingerprints de herramienta compartidos, evadibles. \\
+    11 & Prueba activa de evasion & Camuflando los primeros bytes, el recall del payload cae (SSH 1.0->0.35, DoS 0.72->0.43) mientras la conducta permanece invariante (\textasciitilde{}1.0). \\
+    12 & Sin etiquetas la tesis se replica & Entrenando solo con benigno, cada regimen esconde su anomalia en una vista distinta; el zero-day volumetrico es intrinsecamente dificil. \\
+    13 & 19 atributos interpretables valen lo que 257 dimensiones & Y ademas no diluyen la fusion: la dilucion del 16-jun era un problema de REPRESENTACION, no de la fusion. \\
+    14 & Lo que no transfiere entre dias es el UMBRAL, no la representacion & Con umbral fijo el byte-CNN parece colapsar entre dias; el AUC muestra que el orden se conserva. Se arregla recalibrando con 25 etiquetas. \\
+    15 & La firma de la botnet es la PERIODICIDAD & Dos modas discretas (\textasciitilde{}0.5 s y \textasciitilde{}2.0 s) concentran el 91.1\% de sus intervalos; ninguna de las tres vistas del protocolo la calcula. \\
+    16 & El payload es CIEGO al 94.4\% de la Infiltration & 182.323 de 193.097 conexiones del reconocimiento no llevan un byte de aplicacion. No es que funcione peor: no puede ver. Limite del enfoque. \\
+    17 & La evasion distingue la huella de herramienta del contenido real & Camuflar los primeros bytes hunde el payload salvo en el dia web, donde la firma es contenido genuino. Es la prueba que si discrimina. \\
+    18 & La fuga de IPs sobrevive a la validacion cruzada entre dias & Incluir IPs y puertos como atributos infla el resultado incluso al evaluar en otro dia: el atajo viaja con el conjunto de datos. \\
+    19 & La evaluacion intra-dia esta SATURADA y no discrimina & Las mismas tres vistas, misma metrica y mismo protocolo en seis dias: el payload no baja de 0.973 y la conducta de 0.982. Con un solo host atacante por dia cualquier vista dispone de un atajo suficiente, asi que un 0.99 aqui no mide deteccion. La discriminacion esta en la robustez, no en el macro-F1. \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -1,0 +1,776 @@
+% =====================================================================
+% CAPITULO 4 - LA EVALUACION INTRA-DIA
+% =====================================================================
+% TESIS: dentro del dia el problema esta saturado y la evaluacion intra-dia no
+% discrimina entre vistas. La causa que se propuso primero (un solo host
+% atacante por dia -> memorizacion del host) la refuta el leave-one-attacker-out
+% de la seccion 4.4. El mecanismo que queda es la herramienta, y lo confirma la
+% evasion. La discriminacion real se traslada al capitulo 5.
+%
+% El marco de los cuatro regimenes se conserva como descripcion de donde vive
+% la firma de cada ataque, no como asignacion de vista ganadora.
+%
+% CONVENIO DE TABLAS: flotante `table` con \caption arriba, \label despues del
+% caption y booktabs. Citada desde el texto como "la tabla~\ref{...}".
+%
+% METRICA: macro-F1 out-of-fold + recall de ataque, con IC 95% cuando N es
+% pequeno. No citar exactitud: la seccion 4.1 explica por que engana.
+%
+% ESTILO (31-ago): sin negritas en el texto corrido, sin incisos entre rayas
+% salvo cuando la frase los pida, y sin florituras.
+% =====================================================================
+
+Este capítulo mide. Toma los seis días procesados del CSE-CIC-IDS2018, aplica a
+todos el mismo protocolo y las mismas tres representaciones de los datos, y
+compara. El resultado no es el que se esperaba al empezar, y es el hallazgo
+central del trabajo: dentro de un mismo día el problema está saturado.
+Cualquiera de las vistas detecta cualquiera de los ataques con un macro-F1 por
+encima de $0.97$, de modo que la comparación no distingue entre ellas.
+
+Eso no es un fracaso de la medición sino un resultado sobre el conjunto de
+datos, y tiene una causa identificable que la sección~\ref{sec:por-que-satura}
+documenta. Su consecuencia ordena el resto de la memoria: si la evaluación
+dentro del día no discrimina, la pregunta de qué vista es mejor hay que
+plantearla en otro sitio. Ese otro sitio, la robustez ante evasión, la
+transferencia entre dominios y la calibración, es el
+capítulo~\ref{ch:generalizacion}.
+
+\section{Marco de comparación}
+\label{sec:marco}
+
+Todas las comparaciones de este capítulo y del siguiente siguen el mismo
+protocolo, que se fija aquí para no repetirlo. Las decisiones que lo componen no
+son neutrales: cada una corrige un sesgo concreto que se detectó
+experimentalmente durante el trabajo, y sin ellas los resultados serían
+sistemáticamente optimistas.
+
+\subsection*{Selección por servicio, no por puerto}
+
+El subconjunto de flujos sobre el que se evalúa cada día se define por el
+servicio identificado por contenido, con las mismas firmas que emplean los
+analizadores de Zeek: el \emph{banner} SSH, los métodos HTTP, el registro TLS o
+los saludos SMTP y FTP. No se define por el número de puerto. El puerto depende
+de la configuración de cada red y no es, por tanto, un atributo independiente
+del contexto: un mismo servicio puede escucharse en puertos distintos y un mismo
+puerto alojar servicios distintos. Usarlo como criterio ata los resultados a la
+topología del laboratorio.
+
+La corrección no alteró ninguna conclusión previa, porque en un entorno
+controlado el contenido confirma al puerto casi siempre, pero sí cambia lo que
+se puede afirmar. Y cambia algunos recuentos: en el día del SSH-Bruteforce el
+tráfico benigno genuino son 433 flujos si se selecciona por el puerto 22 y 358
+si se selecciona por contenido. Las cifras que se reportan a partir de aquí son
+siempre las de la selección por contenido.
+
+\subsection*{Un flujo es una conexión TCP}
+
+La unidad de ejemplo es la conexión TCP, identificada por el \texttt{uid} que
+asigna Zeek, y no el paquete. Un ataque se manifiesta a lo largo de una
+conversación, no en un datagrama aislado, y agregar por conexión evita que un
+mismo evento aparezca centenares de veces en el conjunto de entrenamiento y una
+sola vez en el de prueba.
+
+\subsection*{Balanceo 1:1, validación cruzada y repeticiones}
+
+El tráfico benigno representa más del 95\% de los flujos en todos los días
+analizados, así que la exactitud global es una métrica engañosa: un
+clasificador que responda siempre «benigno» la maximiza. Cada comparación se
+hace sobre un subconjunto balanceado 1:1 por submuestreo aleatorio de la clase
+mayoritaria, con un tope de 5.000 ejemplos por clase. Con ese balanceo el azar
+corresponde exactamente a $0.5$.
+
+La evaluación es validación cruzada estratificada de cinco particiones con
+predicciones \emph{out-of-fold}: cada flujo se predice una única vez, por el
+modelo que no lo vio durante el entrenamiento.
+
+El clasificador es el mismo en todas las comparaciones de este capítulo: un
+perceptrón multicapa de dos capas ocultas, de 256 y 128 unidades, precedido de
+un escalado estándar que se ajusta únicamente sobre la partición de
+entrenamiento. La sección~\ref{sec:modelos} lo describe junto con el resto de
+modelos del trabajo. Mantenerlo fijo es deliberado, porque lo que aquí se
+compara son las representaciones y no las arquitecturas: si el modelo cambiase
+entre vistas, la diferencia medida no sería atribuible a la información que cada
+vista aporta. Las arquitecturas se comparan entre sí en el
+capítulo~\ref{ch:generalizacion}, y allí lo que se mantiene fijo es la vista.
+
+Hay un detalle del submuestreo que afecta a la
+reproducibilidad. En el día del SSH el balanceo elige 358 flujos de ataque de
+entre 94.207, y cuáles se elijan mueve el resultado en la tercera cifra decimal,
+que es justo donde se separan las vistas. Fijar una semilla arbitraria y
+reportar ese número sería presentar como exacto algo que no lo es. Por eso cada
+comparación se repite diez veces con semillas distintas y se reporta la media.
+
+Esas diez repeticiones no son diez
+semillas de la validación cruzada. Cada repetición extrae un subconjunto
+balanceado distinto y lo evalúa entero con validación cruzada de cinco
+particiones: el procedimiento son diez ejecuciones completas de la
+validación cruzada, es decir, cincuenta ajustes del modelo por vista y día. Lo
+que varía entre repeticiones es qué flujos de la clase mayoritaria entran en la
+comparación, que es la fuente de incertidumbre que importa cuando el balanceo
+descarta la mayor parte de esa clase, como aquí, que reduce los 94.207 flujos de
+ataque a los 358 benignos genuinos disponibles.
+
+El algoritmo~\ref{alg:protocolo} recoge el procedimiento completo, porque
+descrito en prosa queda repartido entre varios párrafos y su reproducción exacta
+importa. Las dos fuentes de incertidumbre que el intervalo recoge corresponden a
+los dos bucles: el exterior sobre submuestreos y el interior sobre remuestreos.
+
+\begin{algorithm}[htbp]
+\caption{Protocolo de comparación entre vistas}
+\label{alg:protocolo}
+\begin{algorithmic}[1]
+\Require Flujos de ataque $A$ y benignos genuinos $B$ del servicio; vistas $V$;
+         repeticiones $R = 10$; remuestreos $N = 2000$
+\Ensure Macro-F1 medio e intervalo de confianza al 95\% por vista
+\State $n \gets \min(|A|, |B|, 5000)$
+\ForAll{vista $v \in V$}
+  \State $P_v \gets \emptyset$;\ \ $Q_v \gets \emptyset$
+  \For{$r = 1$ \textbf{hasta} $R$}
+    \State $S \gets n$ flujos de $A$ y $n$ de $B$, al azar con semilla $r$
+    \State $\hat{y} \gets$ predicción \emph{out-of-fold} de $S$ con 5-Fold estratificado
+    \State $P_v \gets P_v \cup \{\text{macro-F1}(y_S, \hat{y})\}$
+    \For{$b = 1$ \textbf{hasta} $N / R$}
+      \State $I \gets$ muestra con reemplazo de los índices de $S$
+      \State $Q_v \gets Q_v \cup \{\text{macro-F1}(y_S[I], \hat{y}[I])\}$
+    \EndFor
+  \EndFor
+  \State \textbf{reportar} media de $P_v$ y percentiles 2.5 y 97.5 de $Q_v$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection*{Benigno genuino: el error que se cometió dos veces}
+\label{sec:benigno-genuino}
+
+La decisión más importante del protocolo es también la que más costó aprender.
+El tráfico benigno de referencia debe proceder de terceros, nunca del propio
+atacante fuera de la ventana etiquetada.
+
+Parece obvio enunciado así, pero el error se cometió dos veces
+(secciones~\ref{sec:benigno} y~\ref{sec:reg-volumetrico}). En el día del
+SSH-Bruteforce, de los 2.022 flujos del puerto 22 etiquetados como benignos,
+1.589 eran del propio atacante, conexiones suyas que caían fuera de los límites
+de la ventana, y solo 433 procedían de terceros. Con ese conjunto se estaba
+comparando ataque contra ataque, y el resultado era una medida sin sentido que
+además parecía razonable: ninguna vista superaba el $0.78$ y se interpretó
+como el techo del problema. En el día del DoS-Hulk el mismo error afectaba al
+65.1\% del benigno HTTP.
+
+La corrección no consistió en filtrar esos flujos al evaluar, sino en arreglar
+la ventana y reetiquetarlos en el conjunto de datos, porque eran actividad del
+ataque. Tiene una consecuencia metodológica que declarar: el escenario
+contaminado ya no puede reconstruirse desde los datos actuales, de modo que las
+cifras que en su día lo describieron son históricas y no comparables con las de
+este capítulo.
+
+Lo que generaliza es la regla. Hay que verificar que la ventana etiquetada cubre
+toda la actividad continua del atacante sobre el conjunto completo, y no sobre
+una captura suelta. Un artefacto de etiquetado no se detecta mirando las
+métricas, porque las del escenario contaminado eran perfectamente plausibles,
+sino auditando de dónde procede cada flujo de la clase negativa.
+
+\subsection*{Métricas}
+
+Se reportan macro-F1 y \emph{recall} de la clase de ataque. La primera resume el
+equilibrio entre precisión y sensibilidad sin dejarse arrastrar por la clase
+mayoritaria. La segunda responde a la pregunta operativa de cuántos ataques se
+escapan, y se reporta siempre por separado porque un macro-F1 de $0.33$ puede
+corresponder tanto a un clasificador mediocre como a uno que no detecta
+absolutamente nada.
+
+Ambas van acompañadas de un intervalo de confianza al 95\% obtenido por
+\emph{bootstrap} de 2.000 remuestreos repartidos entre las diez repeticiones del
+submuestreo, de modo que el intervalo recoge las dos fuentes de incertidumbre:
+el tamaño finito del conjunto evaluado y qué flujos concretos entraron en él.
+Con 358 flujos benignos genuinos en el día del SSH y 203 flujos de ataque en el
+día web, un macro-F1 sin intervalo no permitiría distinguir una vista de otra.
+
+La exactitud no se usa, por el motivo que ilustra la
+sección~\ref{sec:reg-cifrado}. En el capítulo~\ref{ch:generalizacion} se añaden
+el AUC y el error de calibración: cuando se compara entre dominios, una métrica
+que dependa de un umbral fijo puede ocultar por completo lo que el modelo ha
+aprendido.
+
+\subsection*{Las tres vistas}
+
+Se comparan tres representaciones del mismo flujo, siempre las mismas:
+
+\begin{itemize}
+  \item \emph{Payload}: histograma de los 256 valores de byte de la carga útil
+        agregada de la conexión, más su entropía normalizada.
+  \item Metadatos de flujo: cuatro escalares de la conexión, que son el número
+        de paquetes, los bytes totales, la longitud de la secuencia y la
+        duración, con $\log(1+x)$ para las colas pesadas.
+  \item Conducta: los metadatos anteriores más tres características de ráfaga,
+        el número de conexiones que el mismo origen ha abierto en el segundo,
+        los cinco segundos y los treinta segundos previos, calculadas de forma
+        causal, mirando solo al pasado, como haría un detector en línea.
+\end{itemize}
+
+Que sean siempre las mismas no es una obviedad. Una versión anterior de este
+trabajo comparaba la vista conductual en un día contra los metadatos básicos en
+otro, ambas rotuladas igual, y eso exageraba la diferencia entre regímenes.
+Sobre ese error se vuelve en la sección~\ref{sec:reg-claro}.
+
+\section{Los cuatro regímenes: dónde vive la firma}
+\label{sec:regimenes-descriptivo}
+
+Antes de medir, describir. Los seis días cubren cuatro maneras
+cualitativamente distintas de que un ataque se haga visible en el tráfico. Esta
+sección las caracteriza inspeccionando los datos, sin clasificador de por medio:
+son hechos sobre los ataques, no sobre los modelos.
+
+\subsection{Régimen cifrado: la firma vive en la repetición}
+\label{sec:reg-cifrado}
+
+El día \texttt{Wednesday-14-02-2018} contiene un ataque de fuerza bruta contra
+SSH: 94.207 flujos de ataque desde \texttt{13.58.98.64} contra
+\texttt{172.31.69.25:22}, entre las 14:01 y las 15:33 hora local, sobre un total
+de 2.202.231 flujos.
+
+El tráfico va cifrado y los bytes que transporta son, por diseño,
+indistinguibles del ruido: la entropía de la carga útil es de aproximadamente
+$7.4$ tanto en el ataque como en el tráfico legítimo. Lo que sí distingue al
+ataque es que se repite, y la figura~\ref{fig:rafaga} muestra hasta qué punto:
+la mediana de conexiones por origen en ventanas de cinco segundos es de 86 para
+el atacante frente a 1 para el tráfico legítimo. Un ataque de fuerza bruta es,
+por definición, un patrón de repetición.
+
+\paragraph{El espejismo del 99.96\%.} Este día sirve además para mostrar por qué
+la exactitud no aparece como métrica en el resto del capítulo. Un primer modelo
+entrenado sobre el histograma de bytes y la entropía alcanzaba una exactitud del
+$99.95\%$ en validación cruzada y del $99.96\%$ sobre el conjunto de prueba.
+Auditado contra el tráfico SSH benigno, que es el único que un detector
+desplegado encontraría a diario, su tasa de falsos positivos era del 96\%. El
+modelo no había aprendido a reconocer el ataque: había aprendido a reconocer el
+protocolo SSH, que ese día aparecía casi siempre asociado al ataque. Las dos
+cifras son correctas y son inútiles.
+
+La figura~\ref{fig:espejismo} pone las dos juntas, que es la única manera de
+verlo. Por separado, la primera parece un resultado excelente y la segunda un
+modelo distinto.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F12_espejismo}
+  \caption[El espejismo del 99.96\,\%]{El mismo modelo, medido de dos maneras.
+  A la izquierda, la exactitud sobre un conjunto benigno compuesto en su
+  práctica totalidad por otros protocolos. A la derecha, los falsos positivos
+  sobre tráfico SSH benigno real, que es el que un detector desplegado
+  encontraría.}
+  \label{fig:espejismo}
+\end{figure}
+
+\subsection{Régimen en claro: la firma vive en los bytes}
+\label{sec:reg-claro}
+
+El día \texttt{Thursday-22-02-2018} contiene ataques web contra una aplicación
+DVWA: 203 flujos repartidos en fuerza bruta (142), XSS (42) e inyección SQL
+(19), desde \texttt{18.218.115.60} contra \texttt{172.31.69.28:80}.
+
+Aquí el contenido malicioso está literalmente en los bytes: las cadenas
+\texttt{union select}, \texttt{<script>} o la repetición de \texttt{POST
+login.php} son el ataque, no un rastro de él. Y la conducta, que en el SSH era
+la señal más nítida, aquí no existe: el contraste de ráfaga es de 1 conexión del
+ataque frente a 3 del benigno, es decir, el ataque abre menos conexiones que el
+tráfico normal. Es un ataque de bajo volumen.
+
+\subsubsection*{El tipo de ataque vive en la secuencia, no en la composición}
+
+El día web permite además una pregunta que los otros no admiten, porque es el
+único con varios tipos de ataque distintos sobre el mismo servicio. En lugar de
+separar ataque de benigno, se puede pedir al modelo que distinga entre los tres
+tipos: fuerza bruta (142 flujos), XSS (42) e inyección SQL (19).
+
+El resultado, en la tabla~\ref{tab:multitipo}, es el único de todo el trabajo en
+que la representación del contenido importa por sí misma. La secuencia de bytes
+identifica el tipo con un macro-F1 de $0.9505$, mientras el histograma de los
+mismos bytes se queda en $0.7462$ y los metadatos de flujo en $0.7695$.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Identificación del tipo de ataque web]{Macro-F1 \emph{out-of-fold} al
+  distinguir entre los tres tipos de ataque del día web, y \emph{recall} de la
+  clase minoritaria, que es la inyección SQL con 19 flujos.}
+  \label{tab:multitipo}
+  \begin{tabular}{lrr}
+    \toprule
+    \textbf{Vista} & \textbf{Macro-F1} & \textbf{Recall SQLi} \\
+    \midrule
+    Payload, histograma & 0.7462 & 0.2632 \\
+    Payload, secuencia  & 0.9505 & 0.8421 \\
+    Metadatos de flujo  & 0.7695 & 0.2632 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La diferencia se concentra en la clase minoritaria. El histograma y los
+metadatos recuperan el 26.3\% de las inyecciones SQL, es decir, cinco de
+diecinueve; la secuencia recupera el 84.2\%, dieciséis de diecinueve. El motivo
+es que la inyección SQL y el ataque de fuerza bruta usan aproximadamente los
+mismos caracteres, y su composición de bytes es casi idéntica y solo
+el orden los distingue. La cadena \texttt{union select} no es un conjunto de
+letras, es una secuencia.
+
+Es un resultado modesto por el tamaño de la muestra, con diecinueve ejemplos en
+la clase minoritaria, pero vale la pena retenerlo porque matiza todo el capítulo:
+cuando la comparación entre vistas satura, la comparación entre
+\emph{representaciones de la misma vista} todavía puede discriminar.
+
+\subsection{Régimen volumétrico: la firma vive en el agregado}
+\label{sec:reg-volumetrico}
+
+Tres días cubren este régimen, y juntos muestran algo que ninguno enseñaría por
+separado: el contraste de ráfaga se desploma tres órdenes de magnitud a medida
+que el ataque se distribuye.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Contraste de ráfaga por día]{Mediana de conexiones abiertas por un
+  mismo origen en ventanas de cinco segundos, para el ataque y para el tráfico
+  legítimo del mismo día.}
+  % @fuente [x for d in ["16-02 DoS-Hulk (1 origen)", "15-02 GoldenEye+Slowloris (1+1)", "20-02 DDoS-LOIC (10 origenes)", "14-02 SSH-Bruteforce", "02-03 Bot (beaconing)", "22-02 Web (BF/XSS/SQLi)"] for x in R.RAFAGA_MEDIANA[d]]
+  \label{tab:rafaga-contraste}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Día y ataque} & \textbf{Ataque} & \textbf{Benigno} & \textbf{Contraste} \\
+    \midrule
+    16-02 DoS-Hulk (1 origen)            & 11.626 & 3 & $\times$3.875 \\
+    15-02 GoldenEye + Slowloris (1+1)    &    104 & 3 & $\times$35 \\
+    20-02 DDoS-LOIC (10 orígenes)        &     39 & 3 & $\times$13 \\
+    14-02 SSH-Bruteforce                 &     86 & 1 & $\times$86 \\
+    02-03 Bot (\emph{beaconing})         &     10 & 2 & $\times$5 \\
+    22-02 Web (BF / XSS / SQLi)          &      1 & 3 & $\times$0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La lectura de la tabla~\ref{tab:rafaga-contraste} es que la ráfaga no es una
+propiedad de los ataques volumétricos sino de los ataques concentrados. Un DDoS
+repartido entre diez orígenes diluye por construcción la señal que un DoS de un
+solo origen exhibe de forma masiva. El día web cierra el rango por el otro
+extremo, con contraste nulo.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F17_rafaga_distribucion}
+  \caption[Distribución de la ráfaga por origen]{Conexiones abiertas por un mismo
+  origen en ventanas de cinco segundos, en el día del SSH-Bruteforce. La mediana
+  del atacante es 86; la del tráfico legítimo, 1.}
+  \label{fig:rafaga}
+\end{figure}
+
+\subsection{Régimen de periodicidad: la firma vive en el intervalo}
+\label{sec:reg-periodicidad}
+
+El día \texttt{Friday-02-03-2018} contiene la actividad de una botnet (Ares):
+142.921 flujos. Su firma no es el volumen, ya que su contraste de ráfaga es de
+apenas $\times$5, sino la regularidad temporal. La figura~\ref{fig:beacon} lo
+mide. El \emph{beacon} late con dos intervalos discretos, en torno a $0.5$ y
+$2.0$ segundos, que concentran el 91.1\% de sus intervalos entre conexiones en
+dos bandas de 50 milisegundos. El tráfico benigno del mismo día es una curva
+suave decreciente: en la banda de $0.50$ a $0.55$ segundos cae el 41.8\% del
+ataque frente al 1.3\% del benigno, un contraste de $\times$32.
+
+Es el régimen que motivó una vista adicional, porque ninguna de las tres vistas
+del protocolo calcula el intervalo entre conexiones. Sobre ello vuelve la
+sección~\ref{sec:sintesis-regimenes}.
+
+\section{La medición uniforme: todo satura}
+\label{sec:saturacion}
+
+Descritos los regímenes, la pregunta natural es cuál de las tres vistas gana en
+cada uno. La tabla~\ref{tab:saturacion} la responde, y la respuesta es que la
+pregunta no se puede contestar con estos datos.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Macro-F1 intra-día en los seis días]{Macro-F1 \emph{out-of-fold} de
+  las mismas tres vistas, con el mismo protocolo y la misma métrica, en los seis
+  días. Media de diez submuestreos.}
+  % @fuente [R.SATURACION_INTRADIA[d][v][0] for d in DIAS for v in VISTAS]
+  \label{tab:saturacion}
+  \begin{tabular}{llll}
+    \toprule
+    \textbf{Día y régimen} & \textbf{Payload} & \textbf{Metadatos} & \textbf{Conducta} \\
+    \midrule
+    14-02 cifrado       & 0.9842 & 0.9906 & 0.9985 \\
+    22-02 en claro      & 0.9734 & 0.9186 & 0.9823 \\
+    16-02 volumétrico   & 1.0000 & 0.9715 & 0.9999 \\
+    15-02 volumétrico   & 0.9998 & 0.9621 & 0.9967 \\
+    20-02 vol.\ diluido & 1.0000 & 0.9987 & 0.9984 \\
+    02-03 periodicidad  & 0.9990 & 0.9981 & 0.9983 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+El \emph{payload} no baja de $0.9734$ en ningún día y es el mejor o empata en
+cuatro de los seis. La conducta no baja de $0.9823$. La única vista que falla
+de forma apreciable son los metadatos de flujo básicos, y solo en tres días. La
+figura~\ref{fig:saturacion} lo muestra como lo que es: una rejilla uniformemente
+alta, sin contraste que leer.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F16_matriz_regimen_vista}
+  \caption[La evaluación intra-día está saturada]{La misma medición de la
+  tabla~\ref{tab:saturacion}, con lo único que distingue unas celdas de otras
+  escrito debajo de cada una: cuánto sobrevive de esa vista cuando el atacante
+  camufla los primeros bytes del flujo.}
+  \label{fig:saturacion}
+\end{figure}
+
+Vale la pena decir con claridad lo que esto derriba, porque era el marco con el que
+se empezó este trabajo. La hipótesis inicial era que cada régimen escondería su
+firma en una vista distinta, con lo que ninguna ganaría en todos y el enfoque
+híbrido quedaría justificado por esa vía. Medido con una sola métrica y un solo
+protocolo, ese marco no se sostiene: en el régimen volumétrico, donde se
+esperaba que ganase el agregado, gana el \emph{payload}; y en el día de la
+botnet, donde se había afirmado que ninguna vista mide la firma, las tres pasan
+de $0.998$.
+
+\subsection*{La única diferencia real}
+
+Lo único que se mueve de forma estadísticamente sólida al cambiar de régimen es
+el desplome de los metadatos per-flujo. La figura~\ref{fig:inversion} lo aísla:
+entre el día cifrado y el día en claro, el \emph{payload} y la conducta apenas
+se mueven y sus intervalos se solapan, mientras los metadatos caen 7.2 puntos y
+son la única diferencia cuyos intervalos no se solapan.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F19_inversion_web_ssh}
+  \caption[Lo único que se invierte son los metadatos per-flujo]{Las mismas tres
+  vistas en los dos regímenes opuestos, con barras de error al 95\%.}
+  \label{fig:inversion}
+\end{figure}
+
+Merece una nota de honestidad metodológica, porque una versión anterior de esta
+figura exageraba el efecto. Comparaba la vista conductual en el lado del SSH
+contra los metadatos básicos en el lado web, ambas rotuladas «metadatos»,
+simplemente porque el día web nunca se había evaluado con la vista conductual.
+La caída aparente era de $1.000$ a $0.929$, y buena parte de esa caída no
+era el cambio de régimen sino el cambio de características. Medido como es
+debido, el efecto sigue existiendo y sigue siendo el único significativo, pero
+es la mitad de grande.
+
+\section{Por qué satura: una hipótesis y su refutación}
+\label{sec:por-que-satura}
+
+Un resultado tan uniforme pide una explicación. La primera que se propuso en
+este trabajo resultó ser falsa, y merece contarse junto con el test que la
+tumbó, porque el mecanismo correcto solo aparece al descartarla.
+
+\subsection*{La hipótesis: el atajo es la identidad del host}
+
+Cada uno de estos días contiene un único host atacante, con la excepción del
+DDoS del 20 de febrero, que tiene diez. Ese host genera decenas o centenares de
+miles de flujos que comparten todo lo que un host comparte consigo mismo: la
+misma pila TCP, el mismo cliente, las mismas cabeceras y el mismo ritmo.
+
+Bajo esas condiciones cabe sospechar que la tarea que se le plantea al
+clasificador no es distinguir un ataque del tráfico normal sino, en la práctica,
+distinguir las conexiones de ese host de las de los demás. Esa tarea es fácil
+desde cualquier representación, lo que explicaría la saturación. Sería el
+fenómeno que Engelen y sus coautores describen para CIC-IDS2017
+\cite{Engelen2021} bajo el nombre de \emph{shortcut learning}: el modelo aprende
+un atajo correlacionado con la etiqueta en lugar del concepto que la etiqueta
+pretende nombrar.
+
+La sospecha era razonable, y afectaba especialmente a la vista conductual,
+porque las características de ráfaga cuentan conexiones por origen y con un
+único atacante podrían estar funcionando como un identificador de ese host más
+que como una descripción de su conducta.
+
+\subsection*{El test: apartar un atacante entero}
+
+La hipótesis es contrastable, pero no en un día con un solo atacante. El DDoS
+del 20 de febrero sí lo permite, porque tiene diez hosts atacantes con unos
+29.000 flujos cada uno. Si el éxito se debiera a memorizar el host, evaluar
+sobre un atacante nunca visto debería hundirlo.
+
+El protocolo aparta en cada pliegue un host atacante completo y, además, un
+grupo disjunto de hosts benignos, para que tampoco la clase negativa pueda
+memorizarse por host. Se entrena con 5.000 flujos por clase y se evalúa sobre
+2.000, y se compara contra un control de exactamente los mismos tamaños con
+partición aleatoria por flujo: sin él, una caída podría deberse al tamaño del
+entrenamiento y no al cambio de host.
+
+Se añade un segundo control, este positivo: una cuarta vista deliberadamente
+tramposa formada por los cuatro octetos de la dirección IP de origen, que no
+puede sino memorizar el host. Si el protocolo es sensible al efecto que pretende
+medir, esa vista debe acertar en la partición aleatoria y desplomarse al apartar
+un atacante. Sin esa comprobación, un resultado negativo no significaría nada.
+
+El algoritmo~\ref{alg:loao} lo detalla, incluidos los dos controles.
+
+\begin{algorithm}[htbp]
+\caption{Leave-one-attacker-out con control negativo y positivo}
+\label{alg:loao}
+\begin{algorithmic}[1]
+\Require Hosts atacantes $H_A$; hosts benignos $H_B$; vistas $V$ más la vista
+         tramposa de octetos de la IP
+\Ensure Macro-F1 por vista, apartando un atacante, y su control aleatorio
+\State Repartir $H_B$ en $|H_A|$ grupos disjuntos al azar
+\For{$i = 1$ \textbf{hasta} $|H_A|$}
+  \State $\mathit{test} \gets$ 2000 flujos del atacante $h_i$ y 2000 del grupo benigno $i$
+  \State $\mathit{train} \gets$ 5000 flujos de $H_A \setminus \{h_i\}$ y 5000 de los demás grupos
+  \ForAll{vista $v \in V$}
+    \State entrenar en $\mathit{train}$, predecir $\mathit{test}$, anotar macro-F1
+  \EndFor
+\EndFor
+\Statex
+\Comment{Control negativo: mismos tamaños, partición aleatoria por flujo}
+\For{$i = 1$ \textbf{hasta} $|H_A|$}
+  \State $\mathit{train}, \mathit{test} \gets$ muestra aleatoria de igual tamaño, ignorando el host
+  \ForAll{vista $v \in V$}
+    \State entrenar, predecir y anotar macro-F1
+  \EndFor
+\EndFor
+\Statex
+\Comment{Control positivo: la vista de octetos debe hundirse en el bucle 1}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{table}[htbp]
+  \centering
+  \caption[Leave-one-attacker-out sobre el DDoS del 20-02]{Macro-F1 al apartar un
+  host atacante completo, frente a un control aleatorio de idéntico tamaño.
+  Media y desviación sobre los diez pliegues. La última fila no es una vista
+  candidata: es un identificador de host puro, incluido para verificar que el
+  test detecta la memorización cuando existe.}
+  % @fuente [x for v in ["payload (histograma + entropia)", "metadatos de flujo", "conducta (metadatos + rafaga)", "[control] octetos de la IP de origen"] for x in R.LOAO_20_02[v]]
+  \label{tab:loao}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Vista} & \textbf{Control} & \textbf{Atacante nuevo} & \textbf{Dif.} \\
+    \midrule
+    Payload (histograma + entropía) & 1.0000 $\pm$ 0.0000 & 1.0000 $\pm$ 0.0000 & $+0.0000$ \\
+    Metadatos de flujo              & 0.9991 $\pm$ 0.0005 & 0.9992 $\pm$ 0.0006 & $+0.0001$ \\
+    Conducta (metadatos + ráfaga)   & 0.9986 $\pm$ 0.0006 & 0.9990 $\pm$ 0.0007 & $+0.0004$ \\
+    \midrule
+    \emph{[control] octetos de la IP} & 0.9999 $\pm$ 0.0001 & 0.9332 $\pm$ 0.2000 & $-0.0667$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{El resultado: la hipótesis era falsa}
+
+La tabla~\ref{tab:loao} no deja margen. Apartar un host atacante entero no
+degrada ninguna de las tres vistas: las diferencias son de $+0.0000$,
+$+0.0001$ y $+0.0004$, es decir, nulas. Lo que las vistas aprenden no es la
+identidad del host.
+
+El control positivo merece leerse con cuidado, porque su media esconde el dato
+interesante. Cae de $0.9999$ a $0.9332$, pero con una desviación de
+$0.2000$: el efecto no está repartido sino concentrado en un solo
+pliegue. El motivo es que nueve de los diez atacantes tienen direcciones en el
+rango \texttt{18.2xx.x.x} y el tráfico benigno está en \texttt{172.31.x.x}, así
+que apartar un atacante deja otros nueve del mismo rango y el primer octeto
+sigue separando. Es la fuga de direcciones IP del
+capítulo~\ref{ch:generalizacion}, medida aquí a nivel de subred y no de host.
+
+El pliegue decisivo es el de \texttt{52.14.136.135}, la única atacante fuera de
+ese rango. Ahí el control positivo se hunde a $0.3333$, es decir, predice una
+sola clase, mientras las tres vistas reales siguen dando $1.0000$, $0.9987$
+y $0.9990$. En el único pliegue donde se demuestra que un atajo por identidad
+de host falla, las vistas reales aguantan intactas. El test es sensible, y aun
+así no detecta memorización de host en ninguna de ellas.
+
+\subsection*{Lo que sí explica la saturación}
+
+Descartado el host, queda la herramienta. Los diez atacantes de ese día ejecutan
+el mismo programa, y todos los ataques de todos los días de este conjunto están
+generados por una única herramienta cada uno. Lo que las vistas aprenden es esa
+herramienta y las condiciones de la captura, no el ataque como categoría.
+
+La confirmación viene del mismo día por otra vía. Camuflar los primeros bytes
+del flujo hunde el \emph{payload} de $1.0000$ a $0.0108$
+(sección~\ref{sec:motivo-equivocado}). Los dos experimentos se complementan de
+forma precisa: el leave-one-attacker-out dice que no es el host, y la evasión
+dice que es la herramienta.
+
+El alcance de este test es limitado. Este test se puede hacer en un solo día
+de los seis, porque es el único con más de un atacante, y en los otros cinco la
+hipótesis del host sigue siendo, estrictamente, no contrastada. Y como los diez
+atacantes comparten herramienta, el test distingue memorizar el host de aprender
+la herramienta o la conducta, pero no puede distinguir aprender la herramienta
+de aprender el ataque. Para eso hacen falta la evasión y la transferencia entre
+dominios.
+
+\paragraph{Una reserva que el test levanta.} La sospecha sobre la vista
+conductual, que la ráfaga fuese un identificador de host disfrazado, queda
+desmentida con datos: medida contra un atacante que nunca vio, la conducta rinde
+igual que contra atacantes conocidos, con $0.9990$ frente a $0.9986$. Cuenta
+conexiones por origen, sí, pero lo que captura es un patrón de comportamiento
+que se repite en hosts distintos.
+
+\paragraph{Qué se puede afirmar y qué no.} De la tabla~\ref{tab:saturacion} se
+sigue que las tres vistas contienen información suficiente para separar estos
+ataques de este tráfico benigno. No se sigue que el problema esté resuelto, ni
+que una vista sea mejor que otra, ni que un detector entrenado así funcionaría
+en una red real. Un macro-F1 de $0.99$ en este montaje no mide capacidad de
+detección.
+
+\paragraph{Un resultado anterior que queda explicado.} Durante el trabajo se
+contrastaron varias arquitecturas del estado del arte, un \emph{transformer}
+sobre bytes y una red de atención cruzada, y ninguna mejoró los resultados,
+algunas a un coste computacional entre dos y cincuenta veces mayor. En su
+momento se interpretó como un límite de los datos. La
+tabla~\ref{tab:saturacion} lo explica mejor: no mejoraban porque no quedaba nada
+que mejorar. El cuello de botella nunca estuvo en la capacidad del modelo.
+
+\section{Aciertan, pero por el motivo equivocado}
+\label{sec:motivo-equivocado}
+
+Si las tres vistas aciertan, la pregunta útil deja de ser cuánto aciertan y pasa
+a ser por qué. Ahí sí se separan, porque no todas aciertan por la misma razón ni
+con la misma solidez.
+
+\subsection*{El payload cifrado lee el banner, no el cifrado}
+
+El $0.9842$ del \emph{payload} en el día del SSH no procede de leer contenido
+cifrado, que sería imposible. Procede del \emph{banner} en claro que precede a
+la negociación de la sesión y que identifica al cliente. El atacante emite dos
+banners distintos, y el modal es literalmente
+\texttt{SSH-2.0-paramiko\_2.0.0}, frente a los 81 de los clientes legítimos como
+PuTTY, libssh2 u OpenSSH. El análisis de saliencia lo confirma: el 31.1\% de la
+importancia atribuida se concentra en los primeros 48 bytes, la zona del banner,
+y no en el cuerpo cifrado.
+
+Es una firma real, pero de la herramienta y no del ataque. El mismo patrón se
+repite en los días volumétricos, donde lo que el modelo aprende son las
+cabeceras y los \emph{User-Agent} característicos de Hulk, GoldenEye y LOIC.
+
+\subsection*{La prueba: camuflar los primeros bytes}
+
+La forma de comprobarlo es directa. Si el modelo se apoya en los primeros bytes
+del flujo, sobrescribirlos con los de un cliente legítimo debería hundirlo, y a
+un atacante real le costaría muy poco hacerlo.
+
+Eso es exactamente lo que ocurre. El experimento completo se desarrolla en la
+sección~\ref{sec:evasion}, tabla~\ref{tab:evasion-cap5}, porque pertenece al
+capítulo de las perturbaciones. Basten aquí las dos cifras de titular: el
+\emph{recall} del \emph{payload} en el día de la botnet cae de $1.0000$ a
+$0.0025$, y en el DDoS a $0.0108$. El \emph{payload} deja de funcionar
+mientras el ataque sigue funcionando igual de bien, porque el atacante no ha
+cambiado su técnica, solo su saludo.
+
+\paragraph{La excepción confirma la regla, y hubo que medirla dos veces.} El día
+web es el único que aguanta, y el camino hasta esa cifra merece contarse. El
+primer experimento sobrescribía 160 bytes y el \emph{recall} se desplomaba a
+$0.0164$, lo que parecía confirmar que también allí la firma era una huella de
+herramienta. Al inspeccionar los flujos modificados quedó claro que el
+experimento estaba mal planteado: en 160 bytes cabe la inyección entera, de modo
+que sobrescribirlos no evade la detección, destruye el ataque. Repetido con un
+prefijo de 24 bytes, que no llega a la carga maliciosa, el \emph{payload}
+aguanta en $0.8852$. Su firma sí es contenido genuino.
+
+\paragraph{La conducta es invariante, y no por mérito.} Las vistas de metadatos
+y de conducta no cambian un solo valor bajo este ataque, sencillamente porque no
+leen el contenido. Es una ventaja estructural, no una virtud del modelo, y hay
+que presentarla como tal: dice que esta forma concreta de evasión no las afecta,
+no que sean robustas frente a cualquier evasión. Un atacante que ralentice
+deliberadamente su fuerza bruta ataca la ráfaga igual de barato.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F37_interarribo_beacon}
+  \caption[El beacon de la botnet, medido]{Distribución de los intervalos entre
+  conexiones consecutivas del mismo origen. El ataque concentra el 91.1\% de sus
+  esperas en dos bandas de 50 ms; el tráfico benigno del mismo día es una curva
+  suave.}
+  \label{fig:beacon}
+\end{figure}
+
+\section{El límite del enfoque: lo que el payload no puede ver}
+\label{sec:limite}
+
+Los apartados anteriores comparan vistas que aciertan. Este trata de los casos
+en que una de ellas no tiene nada que mirar, que es una situación
+cualitativamente distinta de acertar poco.
+
+\subsection*{Un ataque sin payload en el propio día del SSH}
+
+El día 14 de febrero contiene un segundo ataque, de fuerza bruta contra FTP, que
+no aparece en ninguna tabla de este capítulo porque no genera un solo flujo con
+carga útil analizable. El atacante (\texttt{18.221.219.4}) dirige 162.801
+conexiones a \texttt{172.31.69.25:21}, de las cuales 134.945 quedan en estado
+\texttt{REJ} con cero bytes, porque el servicio FTP de la víctima estaba caído
+durante la captura y rechazó los intentos. Las restantes tampoco llegan a
+exportar datos de aplicación. El neto es cero flujos FTP con \emph{payload}.
+
+La causa es más concreta de lo que parece. Es una circunstancia de esta captura, un
+servicio caído, y no una propiedad del protocolo FTP. Lo que generaliza no es el
+mecanismo sino la consecuencia, y esa consecuencia reaparece por otras vías: el
+SlowHTTPTest del 16 de febrero también deja cero flujos con \emph{payload}, en
+su caso porque un ataque de agotamiento lento mantiene conexiones abiertas sin
+llegar a intercambiar datos.
+
+\subsection*{Infiltration: el 94.4\% de una intrusión sin un byte que analizar}
+
+El caso más severo es el día de la Infiltration, y llega por la vía del
+resultado negativo. Tras comprometer una máquina, el atacante ejecuta una fase
+de reconocimiento desde dentro de la red. De las 193.097 conexiones salientes de
+la víctima, 182.323, el 94.4\%, no llevan un solo byte de aplicación: 158.474
+quedan en estado \texttt{S0}, que es un SYN sin respuesta, y 21.069 en
+\texttt{REJ}. Zeek no identifica servicio en 183.907 de ellas. Son un barrido de
+puertos contra 612 destinos.
+
+La figura~\ref{fig:ceguera} reparte esas conexiones según lleven o no carga
+útil. El contraste dentro del mismo día es lo que cierra el argumento: las 5
+conexiones al canal de mando y control (\texttt{13.58.225.34:31337}) sí llevan
+\emph{payload}, con 195.816 bytes de aplicación y el 100\% de ellas con
+contenido, y son perfectamente visibles. El análisis de contenido ve la parte
+pequeña de la intrusión y es ciego a la grande.
+
+No es que el \emph{payload} funcione peor: es que no puede ver. Una fase entera
+de una intrusión real es estructuralmente invisible para un enfoque basado en
+contenido, y ninguna mejora del modelo lo arregla, porque no hay datos que
+mejorar. La literatura recoge el mismo problema al reetiquetar CIC-IDS2017 bajo
+la categoría «\emph{Attempted}» \cite{Engelen2021}
+(sección~\ref{sec:sota-datasets}).
+
+Este resultado es, con diferencia, el argumento más fuerte a favor de combinar
+vistas, y es el único de todo el capítulo que no depende de una comparación de
+métricas.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{F35_ceguera_infiltracion}
+  \caption[La ceguera del payload ante la Infiltration]{Reparto de las 193.097
+  conexiones salientes de la víctima según lleven o no carga útil de
+  aplicación. El 94.4\% no lleva un solo byte que analizar.}
+  \label{fig:ceguera}
+\end{figure}
+
+\section{Síntesis: la pregunta correcta}
+\label{sec:sintesis-regimenes}
+
+Este capítulo empezó con la intención de mostrar qué vista gana en cada régimen
+y termina mostrando que dentro del día no gana ninguna en particular, porque el
+montaje experimental no lo permite. Queda recoger qué sigue en pie.
+
+Los cuatro regímenes son reales. La firma del SSH-Bruteforce vive en la
+repetición, con 86 conexiones por ventana frente a 1; la de los ataques web en
+los bytes; la del DoS en el agregado; y la de la botnet en el intervalo, con el
+91.1\% de sus esperas en dos bandas de 50 ms. Eso se comprueba inspeccionando el
+tráfico y no depende de ningún clasificador.
+
+Lo que no se sostiene es la asignación de una vista ganadora a cada régimen. Con
+un solo host atacante por día, cualquier vista dispone de un atajo suficiente, y
+las diferencias entre ellas caen dentro del ruido.
+
+Hay una excepción a la saturación, y apunta al capítulo siguiente. Ninguna de
+las tres vistas calcula el intervalo entre conexiones, que es donde vive la
+firma de la botnet. El día 02-03 se detecta igualmente al $0.999$, por la
+huella HTTP del canal de mando, pero se detecta por el motivo equivocado, y por
+eso es también el día en que la evasión resulta más devastadora, de $1.0000$ a
+$0.0025$. La saturación y la fragilidad son dos caras de lo mismo.
+
+La pregunta correcta es, por tanto, otra. Si dentro del día todas las vistas
+aciertan, lo que hay que preguntar no es cuál acierta más, sino cuál sigue
+acertando cuando cambian las condiciones: cuando el atacante camufla sus bytes,
+cuando el modelo se aplica a otro día o a otro conjunto de datos, y cuando hay
+que fijar un umbral de decisión sin ver antes los datos de destino. Ese es el
+contenido del capítulo~\ref{ch:generalizacion}.

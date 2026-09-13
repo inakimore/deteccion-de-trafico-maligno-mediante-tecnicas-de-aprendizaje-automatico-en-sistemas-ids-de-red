@@ -1,0 +1,428 @@
+% =====================================================================
+% CAPITULO 2 - ESTADO DEL ARTE
+% =====================================================================
+% Criterio: de cada familia se dice que aporta, que cuesta y SI ESTE TRABAJO
+% LA HA PROBADO O NO. La seccion de defectos de los datasets pesa tanto como
+% la taxonomia, porque es donde enlaza con los hallazgos propios.
+%
+% ESTILO (31-ago): sin negritas en el texto corrido, sin incisos entre rayas
+% salvo cuando la frase los pida, y sin florituras.
+% =====================================================================
+
+Este capítulo sitúa el trabajo en su campo con una restricción declarada: de cada
+familia de modelos se dice qué aporta, qué cuesta y si este trabajo la ha
+contrastado o no. De las siete familias que se repasan, tres se han contrastado
+experimentalmente y cuatro no. Enumerarlas todas sin distinguirlo produciría un
+estado del arte más lucido y menos honesto.
+
+La segunda mitad del capítulo trata de los conjuntos de datos públicos, de cómo
+se evalúan los modelos sobre ellos y de sus defectos conocidos. Ocupa tanto
+espacio como la taxonomía de modelos, y esa proporción es deliberada: dos de los
+hallazgos centrales de esta memoria son mediciones de esos defectos, no mejoras
+de un modelo.
+
+\section{Detección de intrusiones: de las firmas al aprendizaje}
+\label{sec:sota-contexto}
+
+Un sistema de detección de intrusiones en red analiza el tráfico en busca de
+actividad maliciosa. Durante décadas lo hizo mediante firmas: reglas que
+describen patrones conocidos, como una cadena concreta en la carga útil o una
+secuencia de puertos, que un motor contrasta contra cada paquete.
+
+El enfoque tiene una virtud considerable, que es la precisión, y un límite
+estructural: solo detecta lo que ya se ha visto y catalogado. Frente a variantes
+polimórficas, tráfico cifrado o ataques nuevos, una base de firmas queda ciega
+por construcción, y actualizarla exige que alguien haya analizado antes la
+amenaza \cite{Swarnkar2023}.
+
+De ahí el giro hacia el aprendizaje automático, que sustituye la regla escrita a
+mano por un modelo inducido de los datos y aspira a generalizar a variantes no
+vistas. El giro trae sus propios problemas, entre ellos los falsos positivos, la
+opacidad del modelo y la dependencia de datos etiquetados, y esta memoria añade
+uno más, que es su tesis: la dificultad de medir si el modelo ha aprendido lo
+que se cree.
+
+Hay además dos formas de plantear la tarea, porque la literatura
+las mezcla y los resultados no son comparables. La detección basada en firmas o
+en clasificación supervisada parte de ataques etiquetados y aprende a
+reconocerlos; la detección de anomalías se entrena únicamente con tráfico
+benigno y marca lo que se desvía. La primera obtiene resultados mucho mejores
+sobre los conjuntos públicos, pero por construcción solo reconoce lo que se
+parece a lo que vio. La segunda es la que aspira a detectar ataques de día cero,
+a costa de una tasa de falsos positivos mucho más alta. Este trabajo se centra en
+la primera, y emplea la segunda solo como contraste.
+
+Ese contraste está medido y vale la pena anticiparlo, porque acota cuánto valen las
+cifras del resto de la memoria. La suposición de que la mayor parte del tráfico
+es benigno permite entrenar sin etiquetas de ataque, y la
+sección~\ref{sec:anomalia} lo hace con dos métodos clásicos, un Isolation Forest
+y un autoencoder, ajustados únicamente sobre tráfico benigno y evaluados con el
+área bajo la curva ROC para no depender de un umbral. El resultado es que
+retirar las etiquetas de ataque cuesta entre veinte y cincuenta puntos según el
+régimen. Esa es la distancia entre lo que se mide sobre un conjunto etiquetado y
+lo que un detector encontraría ante una amenaza nueva.
+
+\section{Taxonomía de enfoques}
+\label{sec:sota-taxonomia}
+
+Las familias que siguen se ordenan de menor a mayor complejidad estructural. La
+tabla~\ref{tab:taxonomia} las resume y las subsecciones desarrollan cada una.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Familias de modelos y cuáles se han contrastado]{Familias de modelos
+  para detección de intrusiones y ejemplos representativos de cada una.}
+  \label{tab:taxonomia}
+  \begin{tabular}{llc}
+    \toprule
+    \textbf{Familia} & \textbf{Ejemplos} & \textbf{Contrastada} \\
+    \midrule
+    Ensembles sobre flujo   & Random Forest, XGBoost   & Sí \\
+    Tabular profundo        & TabNet                   & No \\
+    Grafos                  & E-GraphSAGE              & No \\
+    Payload como imagen     & CNN 2D sobre bytes       & No \\
+    \emph{Transformers}     & ET-BERT, DeBERTa         & Sí \\
+    Espacios de estados     & Mamba-2                  & No \\
+    Híbridos multimodales   & Fusión tardía, atención cruzada & Sí \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+De las siete familias, este trabajo ha contrastado experimentalmente tres. Las
+otras cuatro se describen porque delimitan el campo, y en cada caso se indica por
+qué quedaron fuera. Cada subsección expone qué aporta la familia y a qué coste.
+
+\subsection{Ensembles sobre características de flujo}
+
+Random Forest, XGBoost \cite{Chen2016} y LightGBM operan sobre vectores de
+características agregadas del flujo, como la duración, el número de paquetes o
+los estadísticos de tamaño, y constituyen el estándar de facto del campo. Su
+rendimiento sobre los conjuntos de datos públicos es difícil de superar y su
+coste de inferencia es mínimo, lo que los hace además desplegables en línea.
+
+El motivo de su éxito es que las características de flujo son de dimensión baja,
+están disponibles siempre y son razonablemente informativas: un ataque de
+denegación de servicio produce conexiones cortas y numerosas, y una fuerza bruta
+produce conexiones de tamaño casi idéntico. Los ensembles de árboles capturan
+bien ese tipo de estructura, con umbrales sobre variables individuales, y toleran
+sin dificultad la mezcla de escalas.
+
+Su límite es la miopía contextual. Una característica agregada no contiene el
+contenido, así que un ataque cuya firma esté en los bytes queda fuera de su
+alcance. Tampoco captura relaciones entre flujos, porque cada conexión se
+clasifica de forma independiente.
+
+Esta familia es la referencia con la que se contrasta en el
+capítulo~\ref{ch:generalizacion}, y el resultado se puede adelantar, porque
+matiza la afirmación de supremacía. Dentro del día los ensembles ganan a un
+perceptrón multicapa sobre la vista tabular, pero por márgenes que van de
+milésimas a $4.7$ puntos, y esa ventaja no sobrevive al cambio de condiciones:
+al transferir entre días, los tres modelos colapsan por igual salvo cuando se les
+da acceso a las direcciones IP, que no es una alternativa aceptable sino la
+medición de un error: la dirección identifica al atacante de este laboratorio y
+no describe el ataque, y lo que mejora con ella no es la detección sino
+la memorización. La sección~\ref{sec:fuga} lo cuantifica.
+
+\subsection{Modelos tabulares profundos}
+
+TabNet \cite{Arik2021} aplica atención secuencial a datos tabulares, buscando la
+potencia de una red profunda con la interpretabilidad de una selección explícita
+de características. En cada paso de decisión el modelo elige qué subconjunto de
+variables mirar, lo que permite explicar sus predicciones sin recurrir a métodos
+externos. Aplicado a la detección de intrusiones, TabNet-IDS
+\cite{Rodriguez2023} reporta una exactitud media del 97.03\,\% en CIC-IDS2017 y
+del 95.58\,\% en CSE-CIC-IDS2018.
+
+No se ha probado en este trabajo. Sobre los datos aquí empleados la comparación
+tendría poco valor informativo, porque el capítulo~\ref{ch:regimenes} muestra que
+la vista tabular ya satura y un modelo tabular más potente no tendría margen que
+recoger. La interpretabilidad que aporta TabNet sí sería útil, pero el trabajo la
+obtiene por otra vía, mediante saliencia sobre el modelo de bytes.
+
+\subsection{Redes neuronales de grafos}
+
+Las redes sobre grafos, entre ellas E-GraphSAGE \cite{Lo2022}, modelan el tráfico
+como un grafo de comunicaciones entre \emph{hosts}: los nodos son máquinas, las
+aristas son flujos, y el modelo aprende representaciones que incorporan el
+vecindario de cada nodo. Detectan así anomalías topológicas, es decir, patrones
+en quién habla con quién que ningún flujo aislado revela.
+
+Es la familia natural para el movimiento lateral, que por definición no vive en
+un flujo sino en la estructura de las comunicaciones. Su coste es la gestión de
+estado: construir y mantener el grafo en línea es sustancialmente más complejo
+que clasificar flujos independientes, y la evaluación exige decidir cómo se
+segmenta el grafo en ventanas.
+
+No se ha probado, y la ironía salta a la vista, porque es precisamente el enfoque
+que capturaría el caso que la sección~\ref{sec:limite} identifica como el límite
+de este trabajo. El reconocimiento de la Infiltration es un abanico de conexiones
+sin carga útil desde un único origen hacia 612 destinos, es decir, un patrón
+puramente topológico. Queda como la línea de trabajo futuro con mejor retorno
+esperado, y se propone en la sección~\ref{sec:futuro} por ese motivo y no por
+completitud.
+
+\subsection{Payload como imagen: redes convolucionales}
+
+Una línea extendida, que arranca con la clasificación de tráfico de \emph{malware}
+mediante representación aprendida \cite{Wang2017}, convierte los bytes de la carga
+útil en una imagen bidimensional, rasterizándolos en una matriz, y aplica una red
+convolucional 2D. La motivación es práctica: permite reutilizar arquitecturas
+maduras de visión por computador, con sus pesos preentrenados y sus técnicas de
+aumento de datos.
+
+La objeción es de fondo y condicionó el diseño de este trabajo. La rasterización
+destruye la causalidad temporal. Un flujo de red es una secuencia en la que el
+byte $n$ precede al $n+1$; al plegarlo en una matriz, bytes distantes en el
+tiempo quedan adyacentes en el espacio y la convolución 2D los trata como
+vecinos. La estructura que se le pide aprender al modelo no es la que tienen los
+datos.
+
+Por eso el byte-CNN de esta memoria opera sobre la secuencia unidimensional, con
+convoluciones de varios tamaños en paralelo. La decisión resultó acertada por una
+razón que solo se supo después: la sección~\ref{sec:saliency} muestra que la
+firma se concentra en los primeros 48 bytes, y una convolución con agrupación
+máxima localiza esa región, mientras que una rasterización la habría repartido
+entre filas no contiguas.
+
+\subsection{Transformers y modelos semánticos}
+
+ET-BERT \cite{ETBERT} y las variantes de DeBERTa aplican preentrenamiento y
+autoatención al tráfico, tratando el paquete como una secuencia de \emph{tokens}
+con semántica propia. El preentrenamiento se hace sobre grandes volúmenes de
+tráfico sin etiquetar, con objetivos autosupervisados análogos a los del
+procesamiento de lenguaje natural, y el modelo resultante se ajusta después a la
+tarea concreta con muchos menos ejemplos etiquetados.
+
+Es la familia con mejores resultados publicados en clasificación de tráfico
+cifrado y malware ofuscado. Su coste principal es la autoatención, cuadrática en
+la longitud de la secuencia, lo que obliga a truncar los flujos o a segmentarlos.
+A ello se añade el coste del preentrenamiento, que no siempre se contabiliza al
+comparar.
+
+Se ha probado, con una restricción importante, que se declara aquí: se contrasta
+la arquitectura, es decir, un codificador con autoatención a presupuesto de
+parámetros comparable, y no el preentrenamiento, que es buena parte de lo que
+aporta ET-BERT. El resultado, en la sección~\ref{sec:sota-contraste}, es que el
+\emph{transformer} nunca gana y cuesta entre 36 y 49 veces más tiempo. Esa
+conclusión vale para esta comparación y no refuta el enfoque en general.
+
+\subsection{Modelos de espacio de estados}
+
+Las arquitecturas basadas en espacios de estados, como Mamba-2, prometen lo
+mismo que un \emph{transformer} con coste lineal en la longitud de la secuencia
+en lugar de cuadrático. Aplicadas al tráfico permiten operar directamente sobre
+los bytes sin \emph{tokenización} ni preentrenamiento, lo que elimina dos
+decisiones de diseño que en los modelos semánticos condicionan mucho el resultado
+\cite{MambaNetBurst2026}.
+
+No se ha probado. Es la familia más reciente de las siete, su ecosistema de
+implementaciones es todavía joven, y queda fuera del alcance de este trabajo.
+
+\subsection{Arquitecturas híbridas y fusión multimodal}
+
+Es la familia en la que se sitúa esta memoria. Combina una rama que procesa el
+contenido con otra que procesa las características de flujo, y la cuestión de
+diseño es dónde y cómo fusionarlas. Caben al menos tres respuestas: concatenar
+las entradas antes de procesarlas, fundir las representaciones intermedias que
+cada rama produce, o dejar que una rama atienda a la otra mediante atención
+cruzada \cite{TwoBranch2026}. Otras propuestas recientes combinan un autoencoder
+con un clasificador clásico \cite{HybridAutoencoder2024}.
+
+Este trabajo emplea fusión tardía, en la que cada rama construye su
+representación por separado y se concatenan antes de la capa de decisión, y
+contrasta esa elección con la atención cruzada del estado del arte. El resultado
+es un empate con 2.3 veces menos parámetros
+(sección~\ref{sec:sota-contraste}).
+
+Falta un matiz que la literatura no siempre explicita. La fusión
+ingenua, concatenando las entradas crudas, es peor que cualquiera de las dos
+ramas por separado, porque las 256 dimensiones del histograma diluyen los cuatro
+escalares de flujo y el modelo acaba ignorándolos. La diferencia entre fusionar
+entradas y fusionar representaciones no es un detalle de implementación.
+
+\section{Cómo se evalúa en la literatura}
+\label{sec:sota-evaluacion}
+
+Los modelos anteriores se comparan casi siempre con el mismo protocolo, y ese
+protocolo es el objeto de buena parte de esta memoria. Conviene por tanto
+describirlo antes de pasar a los conjuntos de datos.
+
+\subsection*{La partición}
+
+Lo habitual es tomar un conjunto de datos etiquetado, mezclar todos sus flujos y
+partirlos aleatoriamente en entrenamiento y prueba, o bien aplicar validación
+cruzada de $k$ particiones. El reparto es aleatorio a nivel de flujo, sin
+considerar de qué host procede cada uno ni en qué momento se capturó.
+
+Esa elección tiene una consecuencia que rara vez se discute: flujos de la misma
+conexión lógica, del mismo host y del mismo minuto acaban repartidos entre
+entrenamiento y prueba. El modelo no tiene que generalizar a una situación nueva,
+solo a otros ejemplos de la misma situación. El capítulo~\ref{ch:regimenes} mide
+qué queda de las diferencias entre representaciones bajo ese protocolo, y la
+respuesta es que no queda ninguna.
+
+\subsection*{Las métricas}
+
+Se reportan mayoritariamente exactitud, precisión, \emph{recall} y F1, y con
+frecuencia solo la primera. Sobre conjuntos donde la clase benigna supera el
+95\,\% de los ejemplos, la exactitud es poco informativa, porque un clasificador
+que responda siempre «benigno» la maximiza. El problema es conocido, y aun así
+las cifras de exactitud siguen apareciendo como resultado principal.
+
+Menos frecuente es el uso de métricas independientes del umbral, como el área
+bajo la curva ROC o la curva de precisión-\emph{recall}. La
+sección~\ref{sec:cross-dia} muestra un caso en que esa ausencia cambia por
+completo la conclusión: un modelo que con umbral fijo parece no transferir en
+absoluto conserva un AUC superior a $0.97$: lo que falla es el
+umbral y no la representación.
+
+Prácticamente ausente está la calibración, es decir, la pregunta de si las
+probabilidades que el modelo emite se corresponden con las frecuencias reales.
+Sobre un único conjunto de datos la calibración importa poco, porque el umbral se
+ajusta una vez; entre dominios distintos es justamente lo primero que se rompe.
+
+\subsection*{Lo que casi nunca se mide}
+
+Tres comprobaciones aparecen rara vez en la literatura revisada y son las que
+este trabajo emplea como eje del capítulo~\ref{ch:generalizacion}.
+
+La primera es la evasión activa, es decir, comprobar qué queda del detector
+cuando el atacante modifica deliberadamente la parte de la entrada en la que el
+modelo se apoya. Sin esa comprobación no se puede distinguir una firma del ataque
+de una firma de la herramienta con que se ejecutó.
+
+La segunda es la interpretabilidad aplicada al diagnóstico, y no solo a la
+presentación. Saber qué parte de la entrada usa el modelo permite anticipar qué
+lo romperá, y en este trabajo fue el paso que motivó todos los demás.
+
+La tercera es la transferencia entre dominios, entendida como entrenar en unas
+condiciones y evaluar en otras distintas. Cuando aparece, suele hacerse entre
+particiones del mismo conjunto de datos, lo que como muestra la
+sección~\ref{sec:fuga} no basta para detectar los atajos que el propio conjunto
+introduce.
+
+\section{Conjuntos de datos públicos y sus defectos}
+\label{sec:sota-datasets}
+
+Esta sección es la que más conecta con el resto de la memoria, porque los
+defectos que describe no son una advertencia general: son el objeto de dos de los
+hallazgos de este trabajo.
+
+\subsection*{Los conjuntos disponibles}
+
+CIC-IDS2017 y CSE-CIC-IDS2018 \cite{Sharafaldin2018, CSECICIDS2018} son los
+conjuntos de referencia del campo. Se generan en un laboratorio controlado, con
+perfiles de tráfico benigno sintetizados a partir del comportamiento de usuarios
+reales y ataques ejecutados con herramientas conocidas y públicas, como Hulk,
+GoldenEye, Slowloris, LOIC o Patator. Se distribuyen tanto en capturas de red en
+bruto como en ficheros de características de flujo ya etiquetadas, extraídas con
+la herramienta CICFlowMeter.
+
+Esa doble distribución explica buena parte de la literatura. Trabajar sobre los
+ficheros de características es mucho más barato, porque evita procesar centenares
+de gigabytes de capturas, y por eso la mayoría de los trabajos publicados los
+usan. El precio es que se pierde el acceso al contenido y se hereda cualquier
+defecto que la herramienta de extracción introduzca. Este trabajo parte de las
+capturas en bruto precisamente para evitar las dos cosas.
+
+UNSW-NB15 \cite{Moustafa2015} sigue una filosofía parecida con otra taxonomía de
+ataques y un generador de tráfico distinto.
+Malware-Traffic-Analysis.net \cite{MalwareTrafficAnalysis} aporta capturas de
+infecciones reales, sin sintetizar, a cambio de no venir etiquetadas de forma
+sistemática. Ninguno de los dos se ha usado aquí; la
+sección~\ref{sec:futuro} explica por qué el segundo sería el complemento más
+valioso.
+
+\subsection*{Los cuatro defectos documentados}
+
+Engelen, Rimmer y Joosen \cite{Engelen2021} auditaron CIC-IDS2017 contra sus
+capturas originales y documentaron cuatro problemas. Los cuatro se reproducen en
+CSE-CIC-IDS2018, que comparte metodología de generación.
+
+\begin{enumerate}
+  \item Errores de etiquetado. Flujos marcados con la clase equivocada por
+        desajustes entre las ventanas declaradas y la actividad real.
+  \item Defectos de la herramienta de extracción de características, que produce
+        valores incorrectos en algunas columnas.
+  \item Ataques «\emph{Attempted}»: intentos que no llegan a completarse y que
+        aparecen etiquetados como ataque aunque no intercambien datos de
+        aplicación.
+  \item \emph{Shortcut learning}: atributos correlacionados con la etiqueta por
+        accidente del montaje experimental, señaladamente las direcciones IP, que
+        permiten al modelo acertar sin aprender nada del ataque.
+\end{enumerate}
+
+\subsection*{Dos de ellos son el objeto de esta memoria}
+
+Los dos últimos no se citan aquí como contexto, sino que se miden en los
+capítulos siguientes, y la conexión se puede enunciar antes de llegar a ellos.
+
+El \emph{shortcut learning} se cuantifica en la sección~\ref{sec:fuga}. Añadir
+las direcciones y el puerto de origen a la vista de metadatos produce un macro-F1
+de $1.0000$ entre días distintos en cinco de los seis pares posibles, porque 15
+de las 18 direcciones atacantes del conjunto empiezan por \texttt{18.} y las 12
+víctimas están en \texttt{172.31.69.x}. Y se añade un resultado que Engelen no
+reporta: la validación entre días no detecta el atajo, lo premia. Solo el cambio
+de conjunto de datos lo rompe.
+
+Las etiquetas «\emph{Attempted}» corresponden a lo que la
+sección~\ref{sec:limite} mide como ceguera del análisis de contenido. En el día
+de la Infiltration, el 94.4\,\% de las conexiones del reconocimiento no lleva un
+solo byte de aplicación, y el ataque de fuerza bruta contra FTP del 14 de febrero
+deja cero flujos analizables. No es que el enfoque funcione peor sobre esos
+ataques: es que no tiene nada que leer.
+
+\subsection*{Un defecto añadido por este trabajo}
+
+A los cuatro anteriores, el capítulo~\ref{ch:regimenes} añade un quinto que la
+literatura consultada no recoge: la evaluación dentro de un mismo día está
+saturada. Medidas tres representaciones distintas con la misma métrica y el mismo
+protocolo sobre seis días, ninguna baja de $0.9186$ y el análisis de contenido
+no baja de $0.9734$. La comparación no discrimina, de modo que un resultado
+alto obtenido así no informa sobre la capacidad de detección.
+
+Esto tiene una consecuencia sobre cómo leer la literatura, y es que buena parte
+de las cifras publicadas sobre estos conjuntos de datos se obtienen exactamente
+con ese protocolo. No implica que esos trabajos estén equivocados, sino que sus
+diferencias de centésimas no son necesariamente diferencias reales.
+
+\section{Posicionamiento de este trabajo}
+\label{sec:sota-posicionamiento}
+
+De la literatura se toman las arquitecturas y las herramientas. La
+representación de la carga útil como distribución de bytes procede de la
+tradición de PAYL y Anagram \cite{Wang2004, Wang2006}; el byte-CNN sigue la línea
+de \emph{Deep Packet} \cite{Lotfollahi2020}; el \emph{transformer} y la atención
+cruzada se implementan siguiendo sus referencias respectivas; el escalado de
+Platt \cite{Platt1999} y el error de calibración esperado \cite{Guo2017} son
+estándar; y la crítica a los conjuntos de datos parte de Engelen \emph{et al.}
+\cite{Engelen2021}.
+
+Lo que este trabajo aporta no es una arquitectura, sino un conjunto de mediciones
+sobre las condiciones en que esas arquitecturas se evalúan:
+
+\begin{itemize}
+  \item Una \emph{ground-truth} verificada sobre las capturas para siete días,
+        que corrige la documentación oficial en tres de ellos
+        (sección~\ref{sec:ground-truth}).
+  \item La constatación de que la evaluación intra-día está saturada y no
+        discrimina entre representaciones, con la hipótesis de la identidad del
+        host contrastada y refutada (secciones~\ref{sec:saturacion}
+        y~\ref{sec:por-que-satura}).
+  \item La medición de que el éxito del análisis de contenido suele ser una
+        huella de la herramienta y no del ataque, demostrada por
+        interpretabilidad y por evasión (secciones~\ref{sec:saliency}
+        y~\ref{sec:evasion}).
+  \item El diagnóstico de que, entre dominios, lo que se rompe primero es la
+        calibración y no la representación, con una receta que cuesta 25
+        etiquetas (sección~\ref{sec:cross-dia}).
+  \item La constatación de que la validación entre días no detecta la fuga de
+        identificadores (sección~\ref{sec:fuga}).
+\end{itemize}
+
+A ello se añade una conclusión que el capítulo~\ref{ch:generalizacion} sostiene
+con datos: sobre estos conjuntos, ninguna de las arquitecturas avanzadas
+contrastadas mejora los resultados, y dos de ellas cuestan entre 2 y 49 veces
+más. El cuello de botella no está en la capacidad del modelo, sino en la calidad
+de la etiqueta y en el protocolo de medición. La
+sección~\ref{sec:aportaciones} desarrolla este posicionamiento.

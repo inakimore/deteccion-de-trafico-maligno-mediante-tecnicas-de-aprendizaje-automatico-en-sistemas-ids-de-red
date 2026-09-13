@@ -1,0 +1,75 @@
+# Ignorar datos y modelos (binarios), pero versionar los resumenes .md
+# de resultados: el README los enlaza como evidencia y deben estar al clonar.
+data/
+models/
+!models/
+models/*
+!models/*.md
+!models/*.png
+*.pcap
+*.zip
+*.csv
+
+# LaTeX auxiliary files (excepto main.pdf)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.alg
+*.fdb_latexmk
+*.synctex.gz
+*.dpth
+*.md5
+*.auxlock
+main.log
+main.fls
+
+# Figuras: se versionan las salidas (la memoria las necesita al clonar) pero
+# NO la cache, que es derivada de los dataset_*.npz con extraer_datos.py.
+figuras/cache/
+
+# Ignorar cosas de Python/Conda
+__pycache__/
+.ipynb_checkpoints/
+
+# IDE y OS
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+# LaTeX: se versiona el fuente y el PDF final, no los auxiliares
+DIF_Dissertation_2026/main.aux
+DIF_Dissertation_2026/main.bbl
+DIF_Dissertation_2026/main.blg
+DIF_Dissertation_2026/main.brf
+DIF_Dissertation_2026/main.lof
+DIF_Dissertation_2026/main.lot
+DIF_Dissertation_2026/main.out
+DIF_Dissertation_2026/main.toc
+DIF_Dissertation_2026/main.alg
+DIF_Dissertation_2026/main.synctex.gz
+
+# PDFs de terceros: no son obra propia y no deben publicarse con el codigo.
+# Siguen en disco, solo dejan de versionarse.
+iraitz_tfg.pdf
+2023_AI_for_IDS.pdf
+Machine Learning en NIDS.pdf
+DIF_Dissertation_2026/memoir_manual.pdf
+
+# Material de asignatura, plantilla institucional, revision privada del
+# director y una exportacion antigua del diario, superada por README.md.
+20260906_tfg_*.pdf
+docker_zeek.pdf
+IIG Modelo TFG 2026.pdf
+diario TFG.pdf
+
+# Tramite administrativo: la autorizacion lleva DNI y firma manuscrita.
+# NUNCA debe versionarse. El PDF de entrega es duplicado de main.pdf.
+Autorizaci*n_TFG_TFM_es.pdf
+Detecci*n de tr*fico maligno*IÑAKI MORENO.pdf

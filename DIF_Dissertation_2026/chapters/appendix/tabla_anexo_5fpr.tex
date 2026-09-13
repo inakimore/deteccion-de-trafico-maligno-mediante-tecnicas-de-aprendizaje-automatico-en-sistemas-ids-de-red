@@ -1,0 +1,15 @@
+% @fuente [R.ANOMALIA_DET_5FPR[r][m] for r in R.ANOMALIA_DET_5FPR for m in R.ANOMALIA_DET_5FPR[r]]
+\begin{table}[htbp]
+  \centering
+  \caption[Detección no supervisada al 5\,\% de falsos positivos]{Fracción de ataques detectados aceptando un 5\,\% de falsos positivos, entrenando únicamente con tráfico benigno. Es la lectura operativa de la tabla~\ref{tab:anomalia}, que reporta el área bajo la curva.}
+  \label{tab:anexo-5fpr}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Régimen} & \textbf{Payload (IF)} & \textbf{Payload (AE)} & \textbf{Conducta (IF)} \\
+    \midrule
+    Cifrado (14-02, SSH) & 0.0000 & 0.0000 & 1.0000 \\
+    En claro (22-02, Web) & 0.2808 & 0.0739 & 0.5714 \\
+    Volumétrico (16-02, DoS) & 0.0000 & 0.0000 & 0.0170 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -1,0 +1,329 @@
+% =====================================================================
+% Bibliografia del TFG - Deteccion de intrusiones mediante analisis
+% hibrido de carga util y comportamiento de flujo
+% =====================================================================
+% Fuente principal: "Machine Learning en NIDS.pdf" (revision 2020-2026)
+% que acompana al proyecto, mas las herramientas y conjuntos de datos
+% efectivamente usados.
+%
+% NOTA: varias entradas procedian de la lista de referencias de ese documento,
+% que solo da titulo y URL. Se completaron el 28 y el 30 de agosto contra las
+% publicaciones originales, y al hacerlo aparecieron tres anos equivocados
+% (fechados por el ano de consulta y no por el de publicacion). Ya no queda
+% ninguna entrada incompleta.
+% =====================================================================
+
+
+% ---------------------------------------------------------------------
+% CONJUNTOS DE DATOS
+% ---------------------------------------------------------------------
+
+@inproceedings{Sharafaldin2018,
+  author    = {Sharafaldin, Iman and Habibi Lashkari, Arash and Ghorbani, Ali A.},
+  title     = {Toward Generating a New Intrusion Detection Dataset and Intrusion
+               Traffic Characterization},
+  booktitle = {Proceedings of the 4th International Conference on Information
+               Systems Security and Privacy (ICISSP)},
+  year      = {2018},
+  pages     = {108--116},
+  note      = {Presenta CIC-IDS2017 y la herramienta CICFlowMeter}
+}
+
+@misc{CSECICIDS2018,
+  title        = {{CSE-CIC-IDS2018} on {AWS}},
+  author       = {{Canadian Institute for Cybersecurity} and
+                  {Communications Security Establishment}},
+  year         = {2018},
+  howpublished = {\url{https://www.unb.ca/cic/datasets/ids-2018.html}},
+  note         = {Conjunto de datos principal de este trabajo}
+}
+
+@inproceedings{Moustafa2015,
+  author    = {Moustafa, Nour and Slay, Jill},
+  title     = {{UNSW-NB15}: A Comprehensive Data Set for Network Intrusion
+               Detection Systems},
+  booktitle = {Military Communications and Information Systems Conference (MilCIS)},
+  year      = {2015},
+  pages     = {1--6}
+}
+
+@misc{MalwareTrafficAnalysis,
+  title        = {Malware-Traffic-Analysis.net},
+  author       = {Duncan, Brad},
+  howpublished = {\url{https://www.malware-traffic-analysis.net/}},
+  note         = {Capturas de infecciones reales; no usado en este trabajo}
+}
+
+
+% ---------------------------------------------------------------------
+% DEFECTOS DE LOS CONJUNTOS DE DATOS  (capitulo 2, y HALLAZGOS 16 y 18)
+% ---------------------------------------------------------------------
+
+@inproceedings{Engelen2021,
+  author    = {Engelen, Gints and Rimmer, Vera and Joosen, Wouter},
+  title     = {Troubleshooting an Intrusion Detection Dataset: the {CICIDS2017}
+               Case Study},
+  booktitle = {IEEE Security and Privacy Workshops (SPW), Workshop on Traffic
+               Measurements for Cybersecurity (WTMC)},
+  year      = {2021},
+  note      = {Origen del {\emph{shortcut learning}} y de las etiquetas {\emph{Attempted}}.
+               Codigo: https://github.com/GintsEngelen/WTMC2021-Code}
+}
+
+
+% ---------------------------------------------------------------------
+% HERRAMIENTAS
+% ---------------------------------------------------------------------
+
+@misc{Zeek,
+  title        = {The {Zeek} Network Security Monitor},
+  author       = {{The Zeek Project}},
+  howpublished = {\url{https://zeek.org/}},
+  note         = {Extraccion de carga util y metadatos de flujo}
+}
+
+@inproceedings{Chen2016,
+  author    = {Chen, Tianqi and Guestrin, Carlos},
+  title     = {{XGBoost}: A Scalable Tree Boosting System},
+  booktitle = {Proceedings of the 22nd ACM SIGKDD International Conference on
+               Knowledge Discovery and Data Mining},
+  year      = {2016},
+  pages     = {785--794}
+}
+
+@article{Pedregosa2011,
+  author  = {Pedregosa, F. and Varoquaux, G. and Gramfort, A. and Michel, V. and
+             Thirion, B. and Grisel, O. and others},
+  title   = {Scikit-learn: Machine Learning in {Python}},
+  journal = {Journal of Machine Learning Research},
+  volume  = {12},
+  pages   = {2825--2830},
+  year    = {2011}
+}
+
+@inproceedings{Paszke2019,
+  author    = {Paszke, Adam and Gross, Sam and Massa, Francisco and others},
+  title     = {{PyTorch}: An Imperative Style, High-Performance Deep Learning
+               Library},
+  booktitle = {Advances in Neural Information Processing Systems 32 (NeurIPS)},
+  year      = {2019},
+  pages     = {8024--8035}
+}
+
+
+% ---------------------------------------------------------------------
+% ANALISIS DE CARGA UTIL Y MODELOS SECUENCIALES
+% ---------------------------------------------------------------------
+
+@article{Lotfollahi2020,
+  author  = {Lotfollahi, Mohammad and Jafari Siavoshani, Mahdi and
+             Shirali Hossein Zade, Ramin and Saberian, Mohammdsadegh},
+  title   = {Deep Packet: A Novel Approach for Encrypted Traffic Classification
+             Using Deep Learning},
+  journal = {Soft Computing},
+  volume  = {24},
+  pages   = {1999--2012},
+  year    = {2020},
+  note    = {Referencia del byte-CNN empleado en este trabajo}
+}
+
+@inproceedings{Wang2004,
+  author    = {Wang, Ke and Stolfo, Salvatore J.},
+  title     = {Anomalous Payload-Based Network Intrusion Detection},
+  booktitle = {Recent Advances in Intrusion Detection (RAID)},
+  year      = {2004},
+  pages     = {203--222},
+  note      = {PAYL: distribucion de bytes de la carga util}
+}
+
+@inproceedings{Wang2006,
+  author    = {Wang, Ke and Parekh, Janak J. and Stolfo, Salvatore J.},
+  title     = {Anagram: A Content Anomaly Detector Resistant to Mimicry Attack},
+  booktitle = {Recent Advances in Intrusion Detection (RAID)},
+  year      = {2006},
+  pages     = {226--248}
+}
+
+@misc{MambaNetBurst2026,
+  author       = {Kulatilleke, Gayan K. and Layeghy, Siamak and
+                  Baktashmotlagh, Mahsa and Portmann, Marius},
+  title        = {{MambaNetBurst}: Direct Byte-level Network Traffic
+                  Classification without Tokenization or Pretraining},
+  year         = {2026},
+  howpublished = {Preprint arXiv:2605.11034},
+  note         = {\url{https://arxiv.org/abs/2605.11034}}
+}
+
+@article{ETBERT,
+  author  = {Harinath, K. and Kishor Kumar, G.},
+  title   = {An Efficient Approach for Encrypted Traffic Classification and
+             Intrusion Detection using Packet Transformer Encoder and {CNN}},
+  journal = {International Journal of Computational and Experimental Science
+             and Engineering},
+  volume  = {11},
+  number  = {3},
+  year    = {2025},
+  doi     = {10.22399/ijcesen.1377}
+}
+
+
+% ---------------------------------------------------------------------
+% FUSION MULTIMODAL E HIBRIDOS
+% ---------------------------------------------------------------------
+
+@article{TwoBranch2026,
+  author  = {Xiong, L. and Wan, L. and Ren, J.},
+  title   = {Two-Branch Intrusion Detection Method Based on Fusion of Deep
+             Semantic and Statistical Features},
+  journal = {Computers, Materials \& Continua},
+  volume  = {87},
+  number  = {3},
+  year    = {2026},
+  doi     = {10.32604/cmc.2026.076986},
+  note    = {CPS-IDS: fusion de payload y estadisticas por atencion cruzada}
+}
+
+% RETIRADA el 30-ago: la entrada IntrusionNet2026 se elimino porque su titulo
+% no aparecia en ninguna base consultada y su DOI no resolvia -- probablemente
+% la lista de referencias de partida lo transcribio mal. Se retiro tambien su
+% unica cita, en el capitulo 2, cuya frase se sostiene sin ella.
+
+@article{HybridAutoencoder2024,
+  author  = {Hussein, Salam Allawi and R\'ep\'as, S\'andor R.},
+  title   = {A Hybrid Intrusion Detection Framework Using Deep Autoencoder and
+             Machine Learning Models},
+  journal = {AI},
+  volume  = {7},
+  number  = {2},
+  pages   = {39},
+  year    = {2026},
+  note    = {AE-GMM con XGBoost y regresion logistica}
+}
+
+
+% ---------------------------------------------------------------------
+% GENERALIZACION CRUZADA Y CALIBRACION   (capitulo 5, HALLAZGO 14)
+% ---------------------------------------------------------------------
+
+@article{CrossDatasetTransformer2026,
+  author  = {Xin, Chaonan and Xu, Keqing},
+  title   = {Cross-Dataset Transformer-{IDS} with Calibration and {AUC}
+             Optimization},
+  journal = {Journal of Cyber Security},
+  volume  = {7},
+  number  = {1},
+  pages   = {483--503},
+  year    = {2025},
+  doi     = {10.32604/jcs.2025.071627},
+  note    = {Corroboracion independiente del HALLAZGO 14: mismo fenomeno de
+             descalibracion entre dominios, corregido con escalado de Platt}
+}
+
+@article{BHMIDS2026,
+  author  = {Zekiouk, Mounira and Bencheikh Lehocine, Madjed and
+             Bouzeraa, Yehya and Bouanane, Ahlam and Hristov, Georgi and
+             Zahariev, Plamen},
+  title   = {{BHM-IDS}: Behavior-Driven Hierarchy and Multi-Dataset Training for
+             Cross-Dataset Generalization},
+  journal = {Applied Sciences},
+  volume  = {16},
+  number  = {16},
+  pages   = {7885},
+  year    = {2026},
+  doi     = {10.3390/app16167885},
+  note    = {No se pudo consultar el texto completo (acceso restringido)}
+}
+
+@inproceedings{Platt1999,
+  author    = {Platt, John C.},
+  title     = {Probabilistic Outputs for Support Vector Machines and Comparisons
+               to Regularized Likelihood Methods},
+  booktitle = {Advances in Large Margin Classifiers},
+  publisher = {MIT Press},
+  year      = {1999},
+  pages     = {61--74},
+  note      = {Metodo de recalibracion empleado en la seccion 5.5}
+}
+
+@inproceedings{Guo2017,
+  author    = {Guo, Chuan and Pleiss, Geoff and Sun, Yu and Weinberger, Kilian Q.},
+  title     = {On Calibration of Modern Neural Networks},
+  booktitle = {Proceedings of the 34th International Conference on Machine
+               Learning (ICML)},
+  year      = {2017},
+  pages     = {1321--1330},
+  note      = {Origen del Expected Calibration Error (ECE)}
+}
+
+
+% ---------------------------------------------------------------------
+% GRAFOS Y OTRAS FAMILIAS NO PROBADAS EN ESTE TRABAJO
+% ---------------------------------------------------------------------
+
+@inproceedings{Lo2022,
+  author    = {Lo, Wai Weng and Layeghy, Siamak and Sarhan, Mohanad and
+               Gallagher, Marcus and Portmann, Marius},
+  title     = {{E-GraphSAGE}: A Graph Neural Network based Intrusion Detection
+               System for {IoT}},
+  booktitle = {IEEE/IFIP Network Operations and Management Symposium (NOMS)},
+  year      = {2022},
+  pages     = {1--9}
+}
+
+@inproceedings{Arik2021,
+  author    = {Arik, Sercan Ö. and Pfister, Tomas},
+  title     = {{TabNet}: Attentive Interpretable Tabular Learning},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume    = {35},
+  year      = {2021},
+  pages     = {6679--6687}
+}
+
+@article{Lee2000,
+  author  = {Lee, Wenke and Stolfo, Salvatore J.},
+  title   = {A Framework for Constructing Features and Models for Intrusion
+             Detection Systems},
+  journal = {ACM Transactions on Information and System Security},
+  volume  = {3},
+  number  = {4},
+  pages   = {227--261},
+  year    = {2000},
+  note    = {Origen de la taxonomia de caracteristicas intrinsecas, de contenido
+             y de trafico}
+}
+
+@article{Rodriguez2023,
+  author  = {Zegarra Rodr\'iguez, Dem\'ostenes and Okey, Ogobuchi Daniel and
+             Maidin, Siti Sarah and Udo, Ekikere Umoren and
+             Kleinschmidt, Jo\~ao Henrique},
+  title   = {Attentive Transformer Deep Learning Algorithm for Intrusion
+             Detection on {IoT} Systems Using Automatic Xplainable Feature
+             Selection},
+  journal = {PLOS ONE},
+  volume  = {18},
+  number  = {10},
+  pages   = {e0286652},
+  year    = {2023},
+  note    = {TabNet-IDS: 97.03 \% en CIC-IDS2017 y 95.58 \% en CSE-CIC-IDS2018}
+}
+
+@book{Swarnkar2023,
+  editor    = {Swarnkar, Mayank and Rajput, Shyam Singh},
+  title     = {Artificial Intelligence for Intrusion Detection Systems},
+  publisher = {Chapman and Hall/CRC},
+  edition   = {1},
+  year      = {2023},
+  isbn      = {9781032386652},
+  note      = {Referencia general de encuadre del campo}
+}
+
+@inproceedings{Wang2017,
+  author    = {Wang, Wei and Zhu, Ming and Zeng, Xuewen and Ye, Xiaozhou and
+               Sheng, Yiqiang},
+  title     = {Malware Traffic Classification Using Convolutional Neural
+               Network for Representation Learning},
+  booktitle = {International Conference on Information Networking (ICOIN)},
+  year      = {2017},
+  pages     = {712--717},
+  note      = {Origen de la linea que rasteriza el payload como imagen 2D}
+}

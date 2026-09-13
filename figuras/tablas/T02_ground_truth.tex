@@ -1,0 +1,21 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Ground-truth verificada empiricamente sobre las capturas, no tomada de la documentacion del dataset.}
+  \label{tab:gt}
+  \footnotesize
+  \begin{tabular}{lllll}
+    \toprule
+    \textbf{Día} & \textbf{Ataque} & \textbf{Atacante} & \textbf{Victima} & \textbf{Ventana (local)} \\
+    \midrule
+    14-02 & SSH-Bruteforce & \texttt{13.58.98.64} & \texttt{172.31.69.25:22} & 14:01-15:33 \\
+    15-02 & DoS-GoldenEye / Slowloris & \texttt{18.219.211.138 (GoldenEye) / 18.217.165.70 (Slowloris)} & \texttt{172.31.69.25:80} & 09:27-10:12 / 11:00-11:42 \\
+    16-02 & DoS-Hulk / SlowHTTPTest & \texttt{18.219.193.20} & \texttt{172.31.69.25:80} & 13:45-13:59 \\
+    20-02 & DDoS-LOIC-HTTP & \texttt{10 IPs (18.219.9.1, 18.218.229.235, 52.14.136.135, ...)} & \texttt{172.31.69.25:80} & 10:13-13:16 \\
+    22-02 & Web (BF / XSS / SQLi) & \texttt{18.218.115.60} & \texttt{172.31.69.28:80} & 10:13 / 13:50 / 16:10 \\
+    02-03 & Bot (Ares) & \texttt{18.219.211.138 (C2)} & \texttt{10 bots en 172.31.69.x:8080} & 10:13-15:54 \\
+    28-02 & Infiltration & \texttt{13.58.225.34 (C2 en :31337)} & \texttt{172.31.69.24} & 10:38-17:42 \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Verificada con \texttt{find\_attacker.py} y \texttt{find\_host.py}, salvo el 02-03 (no hay victima unica: el C2 se localizo sobre los TSV) y el 28-02 (sobre el \texttt{conn.log}). La documentacion oficial resulto incorrecta en el atacante SSH del 14-02, en los limites de ventana del 14-02 y el 16-02, y en el 02-03, donde parte el Bot en dos franjas siendo continuo. El 28-02 no tiene \texttt{.npz}: el 94.4\% de su ataque no lleva payload.}
+\end{table}

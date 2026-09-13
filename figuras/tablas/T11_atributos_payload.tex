@@ -1,0 +1,18 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Atributos interpretables del payload frente al histograma crudo, solos y unidos a las caracteristicas de Zeek.}
+  \label{tab:atributos}
+  \begin{tabular}{lrrrr}
+    \toprule
+    \textbf{Vista} & \textbf{Dim.} & \textbf{Cifrado} & \textbf{En claro} & \textbf{Volumétrico} \\
+    \midrule
+    \texttt{payload-attrs} & 19 & 0.9833 & 0.9606 & 1.0000 \\
+    \texttt{payload-hist} & 257 & 0.9847 & 0.9753 & 1.0000 \\
+    \texttt{zeek-meta} & 7 & 0.9986 & 0.9926 & 1.0000 \\
+    \texttt{zeek+attrs} & 26 & 0.9958 & 0.9877 & 1.0000 \\
+    \texttt{zeek+hist} & 264 & 0.9819 & 0.9877 & 1.0000 \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Accuracy de validacion cruzada 5-Fold; seleccion por servicio, balanceo 1:1 y benigno limpio de la IP atacante. El día volumétrico satura a 1.0000 en las cinco vistas y no discrimina entre ellas.}
+\end{table}

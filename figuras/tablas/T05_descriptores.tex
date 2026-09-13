@@ -1,0 +1,33 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Los 19 descriptores del payload extraidos de la literatura, unidos a las caracteristicas de Zeek.}
+  \label{tab:descriptores}
+  \small
+  \begin{tabular}{lp{0.38\textwidth}p{0.30\textwidth}}
+    \toprule
+    \textbf{Atributo} & \textbf{Que mide} & \textbf{Origen bibliografico} \\
+    \midrule
+    \texttt{entropy\_norm} & Entropia de Shannon normalizada & Lyda \& Hamrock 2007 \\
+    \texttt{distinct\_ratio} & Riqueza: bytes distintos / total & PAYL, Wang \& Stolfo 2004 \\
+    \texttt{max\_freq} & Frecuencia del byte dominante & PAYL, Wang \& Stolfo 2004 \\
+    \texttt{top4\_mass} & Masa de los 4 bytes dominantes & PAYL, Wang \& Stolfo 2004 \\
+    \texttt{mean\_byte} & Media del valor de byte & PAYL, Wang \& Stolfo 2004 \\
+    \texttt{std\_byte} & Desviacion del valor de byte & PAYL, Wang \& Stolfo 2004 \\
+    \texttt{l1\_uniform} & Distancia L1 a la distribucion uniforme & PAYL, Wang \& Stolfo 2004 \\
+    \texttt{chi2\_uniform} & Chi-cuadrado frente a la uniforme & Dorfinger et al. 2011 \\
+    \texttt{coincidence\_idx} & Indice de coincidencia & Lyda \& Hamrock 2007 \\
+    \texttt{compress\_ratio} & Ratio de compresion (zlib) & aprox. complejidad de Kolmogorov \\
+    \texttt{bigram\_entropy\_norm} & Entropia de 2-gramas & Anagram, Wang et al. 2006 \\
+    \texttt{bigram\_distinct} & Diversidad de 2-gramas & Anagram, Wang et al. 2006 \\
+    \texttt{printable\_ratio} & Fraccion de bytes imprimibles & deteccion de inyecciones \\
+    \texttt{alnum\_ratio} & Fraccion de alfanumericos & deteccion de inyecciones \\
+    \texttt{ctrl\_ratio} & Fraccion de caracteres de control & deteccion de shellcode \\
+    \texttt{high\_ratio} & Fraccion de bytes no-ASCII (>127) & deteccion de shellcode \\
+    \texttt{null\_ratio} & Fraccion de bytes nulos & deteccion de shellcode \\
+    \texttt{longest\_print\_run} & Racha imprimible mas larga & deteccion de inyecciones \\
+    \texttt{transition\_rate} & Tasa de transicion imprimible/no & deteccion de inyecciones \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Implementados en \texttt{scripts/zeek/payload\_features.py}. Responden al punto 1b de la revision del tutor del 11 de agosto.}
+\end{table}

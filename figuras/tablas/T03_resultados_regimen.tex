@@ -1,0 +1,21 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Las tres vistas en los seis días, con la misma metrica y el mismo protocolo. La ultima columna es lo unico que las distingue.}
+  \label{tab:regimenes}
+  \small
+  \begin{tabular}{llrrrr}
+    \toprule
+    \textbf{Regimen} & \textbf{Ataque} & \textbf{Payload} & \textbf{Metadatos} & \textbf{Conducta} & \textbf{Payload evadido} \\
+    \midrule
+    Cifrado (14-02) & SSH-Bruteforce & 0.9842 & 0.9906 & 0.9985 & 0.3538 \\
+    En claro (22-02) & Web BF/XSS/SQLi & 0.9734 & 0.9186 & 0.9823 & 0.8852 \\
+    Volumétrico (16-02) & DoS-Hulk & 1.0000 & 0.9715 & 0.9999 & 0.0417 \\
+    Volumétrico (15-02) & GoldenEye+Slowloris & 0.9998 & 0.9621 & 0.9967 & n.\,p. \\
+    Volum. distribuido (20-02) & DDoS-LOIC (10 orig.) & 1.0000 & 0.9987 & 0.9984 & 0.0108 \\
+    Periodicidad (02-03) & Bot (Ares) & 0.9990 & 0.9981 & 0.9983 & 0.0025 \\
+    Reconocimiento (28-02) & Infiltration & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Macro-F1 out-of-fold (5-Fold estratificado), balanceo 1:1 con tope de 5.000 por clase dentro del servicio atacado, benigno genuino de terceros, media de diez submuestreos. Ninguna vista baja de 0.918 y el payload no baja de 0.973: la evaluacion intra-día esta SATURADA y no discrimina entre vistas, porque con un solo host atacante por día cualquier representacion dispone de un atajo suficiente. La ultima columna da el recall del payload tras camuflar los primeros bytes: ahi si se separan. `n.\,p.` = no probada. El 28-02 no tiene cifras porque el 94.4\% de su ataque no lleva payload y no se construyo su dataset: es el limite del enfoque, no un resultado peor.}
+\end{table}

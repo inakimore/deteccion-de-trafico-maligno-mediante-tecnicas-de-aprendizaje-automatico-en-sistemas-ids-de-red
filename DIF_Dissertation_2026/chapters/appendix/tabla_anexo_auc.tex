@@ -1,0 +1,19 @@
+% @fuente [R.RIGOR[r][m][i] for r in R.RIGOR for m in R.RIGOR[r] for i in (0, 1, 2)]
+\begin{table}[htbp]
+  \centering
+  \caption[AUC-ROC con intervalo bootstrap]{Área bajo la curva ROC con intervalo de confianza al 95\,\% de 2.000 remuestreos. Es la medida independiente del umbral que la sección~\ref{sec:cross-dia} emplea para separar el fallo de representación del fallo de umbral.}
+  \label{tab:anexo-auc}
+  \begin{tabular}{llc}
+    \toprule
+    \textbf{Régimen} & \textbf{Vista} & \textbf{AUC-ROC (IC 95\,\%)} \\
+    \midrule
+    Cifrado (14-02, SSH) & payload byte-CNN & 1.0000 [1.0000, 1.0000] \\
+     & payload histograma & 0.9958 [0.9902, 1.0000] \\
+     & conducta meta + ráfaga & 1.0000 [1.0000, 1.0000] \\
+    \midrule
+    En claro (22-02, Web) & payload byte-CNN & 1.0000 [1.0000, 1.0000] \\
+     & payload histograma & 0.9949 [0.9843, 1.0000] \\
+     & conducta meta + ráfaga & 0.9998 [0.9994, 1.0000] \\
+    \bottomrule
+  \end{tabular}
+\end{table}

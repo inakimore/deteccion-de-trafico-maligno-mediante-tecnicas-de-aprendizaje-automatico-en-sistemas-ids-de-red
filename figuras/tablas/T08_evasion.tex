@@ -1,0 +1,18 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Recall del ataque antes y despues de camuflar los primeros bytes con los de un cliente legitimo.}
+  \label{tab:evasión}
+  \small
+  \begin{tabular}{llrrr}
+    \toprule
+    \textbf{Escenario} & \textbf{Vista} & \textbf{Original} & \textbf{Evadido} & \textbf{Caida} \\
+    \midrule
+    SSH cifrado (14-02) & payload (CNN) & 1.0000 & 0.3538 & \textbf{0.6462} \\
+    SSH cifrado (14-02) & conducta (ráfaga) & 1.0000 & 1.0000 & invariante \\
+    DoS volumetrico (16-02, 200 B) & payload (CNN) & 0.7242 & 0.4258 & \textbf{0.2984} \\
+    DoS volumetrico (16-02, 200 B) & conducta (ráfaga) & 0.9992 & 0.9992 & invariante \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Se alteran unicamente los primeros 48 bytes (SSH) o 200 bytes (DoS) de cada flujo de ataque; el resto del flujo no cambia. La vista conductual no mira el contenido, por lo que su recall no varia.}
+\end{table}

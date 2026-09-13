@@ -1,0 +1,23 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Días procesados, con el numero de conexiones TCP con payload extraidas de cada uno.}
+  \label{tab:días}
+  \footnotesize
+  \begin{tabular}{llllrr}
+    \toprule
+    \textbf{Día} & \textbf{Dataset} & \textbf{Ataque} & \textbf{Regimen} & \textbf{Flujos} & \textbf{De ataque} \\
+    \midrule
+    14-02 & 2018 & SSH-Bruteforce & cifrado & 2.202.231 & 94.207 \\
+    15-02 & 2018 & DoS-GoldenEye / Slowloris & volumetrico & 1.997.325 & 31.876 \\
+    16-02 & 2018 & DoS-Hulk / SlowHTTPTest & volumetrico & 4.041.078 & 1.803.160 \\
+    20-02 & 2018 & DDoS-LOIC-HTTP & volumetrico distribuido & 2.837.519 & 289.328 \\
+    22-02 & 2018 & Web (BF / XSS / SQLi) & en claro & 2.777.898 & 203 \\
+    02-03 & 2018 & Bot (Ares) & periodicidad & 3.347.221 & 142.925 \\
+    04-07 (2017) & 2017 & SSH-Patator & cifrado & 100.871 & 2.979 \\
+    05-07 (2017) & 2017 & DoS-Hulk & volumetrico & 263.226 & 168.817 \\
+    06-07 (2017) & 2017 & Web (BF / XSS / SQLi) & en claro & 83.886 & 174 \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Un flujo es una conexión TCP identificada por el \texttt{uid} de Zeek. Recuentos tras las correcciones de etiquetado de junio y agosto de 2026.}
+\end{table}

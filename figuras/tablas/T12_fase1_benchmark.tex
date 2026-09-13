@@ -1,0 +1,16 @@
+% Generado por scripts/figuras/tablas.py - no editar a mano
+\begin{table}[htbp]
+  \centering
+  \caption{Benchmark multiclase de la Fase 1 sobre metadatos de flujo (validacion cruzada de 5 particiones, sin balancear).}
+  \label{tab:fase1}
+  \begin{tabular}{lrr}
+    \toprule
+    \textbf{Modelo} & \textbf{Accuracy media} & \textbf{Desviacion tipica} \\
+    \midrule
+    Decision Tree & 0.99986 & 0.00002 \\
+    Random Forest & 0.99992 & 0.00001 \\
+    XGBoost & 0.99993 & 0.00002 \\
+    \bottomrule
+  \end{tabular}
+  \par\smallskip\footnotesize{Estas cifras son el punto de partida del trabajo, no un resultado: al eliminar las variables que memorizan la morfologia de los paquetes de la herramienta de ataque, la precisión sobre el DoS-Slowloris cae a 0.80.}
+\end{table}
