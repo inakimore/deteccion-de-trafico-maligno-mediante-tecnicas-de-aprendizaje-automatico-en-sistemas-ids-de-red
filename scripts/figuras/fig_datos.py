@@ -256,11 +256,26 @@ def f10_volumen_procesado() -> None:
     """Escala del trabajo, en forma de fichas: son cifras sueltas, no una
     serie, asi que un grafico de barras seria peor que unos numeros grandes.
     """
+    # ERRATA (14-sep): las cuatro fichas estaban escritas a mano y se quedaron
+    # congeladas en un estado antiguo del trabajo -3 dias del 2018, 9.4 M flujos
+    # y 3 regimenes-, contradiciendo al propio resumen de la memoria. El auditor
+    # no podia verlo porque solo comprueba el texto y las tablas. Ahora salen de
+    # resultados.py, asi que no pueden volver a desfasarse.
+    d18, d17 = R.DIAS_CON_DATASET, R.DIAS_CON_DATASET_2017
     fichas = [
-        ("6", "días procesados", "3 de CSE-CIC-IDS2018 + 3 de CIC-IDS2017"),
-        ("~150 GB", "de capturas PCAP", "saneadas y procesadas con Zeek en Docker"),
-        ("9.4 M", "flujos TCP vectorizados", "histograma, entropía y secuencia por conexión"),
-        ("3", "regimenes de firma", "cifrado, en claro y volumétrico"),
+        (f"{d18} + {d17}", "días procesados",
+         f"{d18} de CSE-CIC-IDS2018 + {d17} de CIC-IDS2017"),
+        (R.GIGABYTES_CAPTURA, "de capturas PCAP",
+         "saneadas y procesadas con Zeek en Docker"),
+        # Abreviada, porque "17.203.272" a este cuerpo se sale de la ficha y se
+        # monta sobre la siguiente. El numero exacto va en el pie.
+        (f"{R.FLUJOS_TOTALES_2018 / 1e6:.1f} M",
+         "conexiones TCP vectorizadas",
+         f"{miles(R.FLUJOS_TOTALES_2018)} en total: histograma, entropía y "
+         "secuencia por conexión"),
+        (str(len(R.REGIMENES)), "regímenes de firma",
+         ", ".join(r[0].lower().replace("volumetrico", "volumétrico")
+                   for r in R.REGIMENES)),
     ]
     fig, ax = nueva(ANCHO_COMPLETO, 1.7)
     ax.axis("off")

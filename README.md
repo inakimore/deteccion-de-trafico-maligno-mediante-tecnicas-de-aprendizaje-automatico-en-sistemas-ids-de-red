@@ -11,7 +11,9 @@ conjunto de datos, los modelos y los experimentos de evaluación.
 
 Compara tres representaciones del tráfico de red —la distribución de bytes de la
 carga útil, las características de flujo y una vista conductual— sobre siete días
-del CSE-CIC-IDS2018 y tres del CIC-IDS2017, con un único protocolo de medida.
+del CSE-CIC-IDS2018 —seis de ellos vectorizados; el séptimo, la Infiltration del
+28-02, se analizó y se dejó fuera a propósito porque el 94,4 % de su ataque no
+lleva carga útil— y tres del CIC-IDS2017, con un único protocolo de medida.
 
 El resultado central es negativo: **dentro de un mismo día las tres saturan** por
 encima de 0.97 y la comparación no discrimina entre ellas. La discriminación solo
@@ -26,8 +28,16 @@ o cambiar de conjunto de datos.
 | `scripts/figuras/` | Generación de las 42 figuras y 12 tablas de la memoria, más el auditor de coherencia. |
 | `scripts/figuras/resultados.py` | **Fuente única de verdad.** Toda cifra que aparece en la memoria sale de aquí. |
 | `models/*.md` | Los 62 informes de resultados que producen los experimentos. |
-| `DIF_Dissertation_2026/` | La memoria en LaTeX. |
+| `DIF_Dissertation_2026/` | La memoria en LaTeX. `main.pdf` es la versión entregada al ADDI el 8 de septiembre de 2026, sin modificar. |
 | `figuras/` | Figuras generadas, en dos variantes: anotada y para la memoria. |
+| `ERRATAS.md` | Las cuatro erratas encontradas al revisar el texto contra el código **después** de la entrega. |
+
+> **Sobre `ERRATAS.md`.** La memoria entregada no se toca, así que las erratas se
+> documentan en lugar de corregirse en el PDF. El código sí está corregido en el
+> único caso que lo requería —la figura 3.2, que se había quedado con cifras de
+> una versión anterior del trabajo—, de modo que regenerarla ahora produce una
+> figura distinta de la que imprime `main.pdf`. Esa divergencia es deliberada y
+> está explicada allí.
 
 ## Reproducir los resultados
 

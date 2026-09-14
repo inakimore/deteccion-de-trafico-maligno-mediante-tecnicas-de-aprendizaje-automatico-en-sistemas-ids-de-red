@@ -171,6 +171,8 @@ DIAS = {
 # Se guarda aqui porque el resumen lo cita y toda cifra citada debe tener fuente.
 FLUJOS_TOTALES_2018 = 17_203_272
 DIAS_CON_DATASET = 6
+DIAS_CON_DATASET_2017 = 3          # 04-07, 05-07 y 06-07, validacion cruzada
+GIGABYTES_CAPTURA = "~150 GB"      # capturas en bruto saneadas y procesadas
 
 # Los CUATRO regimenes: marco DESCRIPTIVO del capitulo 4.
 # (eran tres hasta el 21-ago; el dia Bot anadio el de periodicidad)
