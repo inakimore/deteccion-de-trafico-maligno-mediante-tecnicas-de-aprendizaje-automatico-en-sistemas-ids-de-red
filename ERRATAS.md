@@ -1,7 +1,8 @@
 # Erratas de la memoria entregada
 
 `DIF_Dissertation_2026/main.pdf` es **la versión entregada al ADDI el 8 de
-septiembre de 2026**, sin modificar. Después de la entrega se revisó el texto
+septiembre de 2026**, sin modificar: es el mismo fichero, byte a byte
+(`md5 e934d5d06bedb8d769b74ecf69d00dc2`). Después de la entrega se revisó el texto
 contra el código, afirmación por afirmación —arquitecturas, tamaños de
 experimento, métodos, recuentos y parámetros—, y aparecieron cinco erratas.
 Se documentan aquí en lugar de corregirlas en el PDF, porque el PDF entregado es
