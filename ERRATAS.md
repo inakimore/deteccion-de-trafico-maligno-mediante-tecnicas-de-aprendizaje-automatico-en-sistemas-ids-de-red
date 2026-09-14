@@ -137,7 +137,7 @@ sistemática, que es lo que lo dejó fuera del alcance.
 
 ---
 
-## Erratas ortograficas en las figuras
+## Erratas ortográficas en las figuras
 
 Dieciocho palabras sin tilde en el texto **dibujado dentro** de las figuras:
 «tráfico legitimo» (5.1), «meta+rafaga» y «Volumetrico» (4.x y 5.x), «hibrido»,
