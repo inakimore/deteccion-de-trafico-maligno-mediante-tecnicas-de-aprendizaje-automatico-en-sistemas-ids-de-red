@@ -11,12 +11,13 @@ el que tiene el tribunal y cambiarlo a posteriori haría que dejasen de coincidi
 **Ninguna de las cinco afecta a un resultado.** El auditor de coherencia
 (`scripts/figuras/verificar_memoria.py`) contrasta las 432 cifras del texto y
 las tablas contra `scripts/figuras/resultados.py` y sale en verde. Dos están en
-figuras —una con cifras de escala desfasadas, otra con un rótulo cortado— y las
-otras tres fallan al *describir* algo que el código hace de otra manera.
+figuras —una con cifras de escala desfasadas, y otra, que afecta a dos figuras,
+con el final de un rótulo fuera del recorte— y las otras tres fallan al
+*describir* algo que el código hace de otra manera.
 
 **El código de este repositorio sí está corregido** en los dos casos que lo
-requerían (las erratas 1 y 2). Por eso, si se regeneran las figuras 3.2 y 5.2,
-salen distintas de las que imprime `main.pdf`. Esa divergencia es deliberada y
+requerían (las erratas 1 y 2). Por eso, si se regeneran las figuras 3.2, 4.6 y
+5.2, salen distintas de las que imprime `main.pdf`. Esa divergencia es deliberada y
 es la que explica este fichero.
 
 ---
@@ -53,10 +54,14 @@ es una ficha de escala, dice cuánto material se procesó, no qué salió.
 
 ---
 
-## 2. A la figura 5.2 se le sale del recorte la última palabra de un rótulo
+## 2. A dos figuras se les sale del recorte el final de un rótulo (4.6 y 5.2)
 
-**Dónde:** figura 5.2, «La evasión separa la huella de la herramienta del
-contenido real», capítulo 5. Panel derecho.
+El mismo defecto en dos sitios: un rótulo de panel más ancho que su panel, y
+la última palabra queda fuera del recorte de la figura.
+
+### Figura 5.2 — «La evasión separa la huella de la herramienta del contenido real»
+
+**Dónde:** capítulo 5, panel derecho.
 
 El rótulo bajo ese panel se imprime como «día web: con 160 bytes se borra el» y
 ahí se acaba. El texto completo es «**día web: con 160 bytes se borra el
@@ -75,6 +80,20 @@ sección, así que no se pierde información: el defecto es de composición.
 paso, las etiquetas del eje del panel izquierdo: a 7,4 pt «DoS-Hulk» y
 «DDoS-LOIC» se tocaban y se leían como una sola palabra; bajadas a 6,6 pt, ya
 no. Como en la errata 1, `main.pdf` no se recompila.
+
+### Figura 4.6 — «El payload no detecta peor la Infiltration: no puede verla»
+
+**Dónde:** capítulo 4, panel derecho.
+
+Se imprime «en rojo, los estados sin dialogo: S0 (SYN sin respuesta)» y ahí se
+acaba. Falta **«y REJ»**, 21 px fuera del recorte. El rótulo explica qué dos
+estados de conexión están marcados en rojo en la figura, así que cortado deja
+sin nombrar la mitad de lo que señala: REJ son las conexiones rechazadas, y
+junto con S0 —SYN sin respuesta— forman el 94,4 % del escaneo que no lleva
+carga útil. Ese porcentaje sí está en el panel izquierdo y en el texto.
+
+De paso, «dialogo» va sin tilde. Corregidas las dos cosas; `main.pdf` tampoco
+se recompila aquí.
 
 ---
 
@@ -152,7 +171,8 @@ indexan y se comparan —acentuar una rompe el acceso, y ya pasó tres veces con
 Se encontraron con un script que recorre las 42 figuras, extrae todo el texto
 realmente dibujado y contrasta cada palabra sin tilde contra la prosa de los
 capítulos, que hace de autoridad ortográfica. El mismo script mide el recorte de
-cada rótulo, y así apareció la errata 2. Estado actual del código: **0 tildes
+cada rótulo contra el de la figura, y así apareció la errata 2 —las dos
+figuras—, que a ojo no se distinguía de un rótulo que simplemente acaba ahí. Estado actual del código: **0 tildes
 pendientes, 0 rótulos cortados, 0 comas decimales** en las 42.
 
 No se listan como erratas numeradas porque ninguna cambia lo que la figura dice.
