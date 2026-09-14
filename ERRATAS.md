@@ -4,20 +4,20 @@
 septiembre de 2026**, sin modificar: es el mismo fichero, byte a byte
 (`md5 e934d5d06bedb8d769b74ecf69d00dc2`). Después de la entrega se revisó el texto
 contra el código, afirmación por afirmación —arquitecturas, tamaños de
-experimento, métodos, recuentos y parámetros—, y aparecieron cinco erratas.
+experimento, métodos, recuentos y parámetros—, y aparecieron seis erratas.
 Se documentan aquí en lugar de corregirlas en el PDF, porque el PDF entregado es
 el que tiene el tribunal y cambiarlo a posteriori haría que dejasen de coincidir.
 
-**Ninguna de las cinco afecta a un resultado.** El auditor de coherencia
+**Ninguna de las seis afecta a un resultado.** El auditor de coherencia
 (`scripts/figuras/verificar_memoria.py`) contrasta las 432 cifras del texto y
-las tablas contra `scripts/figuras/resultados.py` y sale en verde. Dos están en
-figuras —una con cifras de escala desfasadas, y otra, que afecta a dos figuras,
-con el final de un rótulo fuera del recorte— y las otras tres fallan al
+las tablas contra `scripts/figuras/resultados.py` y sale en verde. Tres están en
+figuras —cifras de escala desfasadas, el final de un rótulo fuera del recorte en
+dos de ellas, y unos porcentajes mal repartidos— y las otras tres fallan al
 *describir* algo que el código hace de otra manera.
 
 **El código de este repositorio sí está corregido** en los dos casos que lo
-requerían (las erratas 1 y 2). Por eso, si se regeneran las figuras 3.2, 4.6 y
-5.2, salen distintas de las que imprime `main.pdf`. Esa divergencia es deliberada y
+requerían (las erratas 1, 2 y 3). Por eso, si se regeneran las figuras 3.2, 3.5,
+4.6 y 5.2, salen distintas de las que imprime `main.pdf`. Esa divergencia es deliberada y
 es la que explica este fichero.
 
 ---
@@ -36,7 +36,7 @@ El cuarto régimen entró el 21 de agosto, al incorporar el día de la botnet
 (`02-03-2018`, Ares). Las cuatro fichas de esa figura estaban escritas a mano y
 no se actualizaron con él.
 
-**Es la más visible de las cinco** porque se contradice con la propia memoria a
+**Es la más visible de las seis** porque se contradice con la propia memoria a
 tres páginas de distancia: el resumen, en la página I, dice «17.203.272
 conexiones TCP repartidas en **seis** días del conjunto CSE-CIC-IDS2018».
 
@@ -97,7 +97,34 @@ se recompila aquí.
 
 ---
 
-## 3. El cuarto escalar de la vista de metadatos no es la duración
+## 3. La figura 3.5 reparte mal los porcentajes: su barra suma 50 %, no 100 %
+
+**Dónde:** figura 3.5, «De qué estaba hecho el tráfico benigno», capítulo 3.
+Barra superior (SSH-Bruteforce, 14-02).
+
+| Dice la figura | Es |
+|---|---|
+| **39.3 %** era el atacante · **10.7 %** benigno genuino | **78.6 %** y **21.4 %** |
+
+Se ve sin hacer ninguna cuenta: es una barra apilada que debería ocupar el ancho
+completo, y **llega a la mitad**. 39.3 + 10.7 = 50.
+
+**La causa.** El código calculaba el denominador como `sum(comp.values())` sobre
+un diccionario que, además de las dos partes, lleva una clave `total`. Para el
+día del SSH eso duplicaba el denominador: 1.589 / 4.044 en lugar de 1.589 /
+2.022. La barra del DoS no se ve afectada porque su diccionario lleva una clave
+`fraccion_contaminada` cuyo valor, 0.651, es despreciable frente a 1,1 millones.
+
+**Contradice al texto de la propia memoria**, que dice 78,6 % —el valor
+correcto— en la sección que acompaña a la figura. Ningún resultado depende de
+ella: es una figura descriptiva del error de etiquetado, no una medición.
+
+**Qué se ha corregido.** El denominador es ahora la suma de las dos partes.
+Como en las erratas 1 y 2, `main.pdf` no se recompila.
+
+---
+
+## 4. El cuarto escalar de la vista de metadatos no es la duración
 
 **Dónde:** §3.2, §3.3 y §4.2.
 
@@ -115,7 +142,7 @@ leerlos— vale igual para «bytes por paquete» que para «duración».
 
 ---
 
-## 4. La atención cruzada no sustituye a la concatenación: la incluye
+## 5. La atención cruzada no sustituye a la concatenación: la incluye
 
 **Dónde:** §5.1, descripción de `CrossAttentionNet`.
 
@@ -135,7 +162,7 @@ que lo añadido no aporta.
 
 ---
 
-## 5. §2.4 remite a una explicación que §6.5 no da
+## 6. §2.4 remite a una explicación que §6.5 no da
 
 **Dónde:** §2.4, cierre del apartado de conjuntos de datos.
 

@@ -241,9 +241,14 @@ def f15_composicion_benigno() -> None:
     y = np.arange(len(casos))
     alto = 0.42
     for i, (nombre, comp) in enumerate(casos):
-        total = sum(comp.values())
+        # ERRATA (15-sep): esto era sum(comp.values()), que suma tambien las
+        # claves que NO son partes -CONTAMINACION_SSH lleva un "total" y
+        # CONTAMINACION_DOS una "fraccion_contaminada"-. En el SSH duplicaba el
+        # denominador: sacaba 39.3 % + 10.7 % = 50 % en una barra apilada que
+        # debe sumar 100. Lo correcto es 78.6 % + 21.4 %.
         atk = comp["del atacante (fuera de ventana)"]
         gen = comp["de terceros (genuino)"]
+        total = atk + gen
         ax.barh(i, atk / total, alto, color=CRITICO,
                 label="En realidad era el atacante" if i == 0 else None)
         ax.barh(i, gen / total, alto, left=atk / total, color=AZUL,
