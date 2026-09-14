@@ -3,20 +3,20 @@
 `DIF_Dissertation_2026/main.pdf` es **la versión entregada al ADDI el 8 de
 septiembre de 2026**, sin modificar. Después de la entrega se revisó el texto
 contra el código, afirmación por afirmación —arquitecturas, tamaños de
-experimento, métodos, recuentos y parámetros—, y aparecieron cuatro erratas.
+experimento, métodos, recuentos y parámetros—, y aparecieron cinco erratas.
 Se documentan aquí en lugar de corregirlas en el PDF, porque el PDF entregado es
 el que tiene el tribunal y cambiarlo a posteriori haría que dejasen de coincidir.
 
-**Ninguna de las cuatro afecta a un resultado.** El auditor de coherencia
+**Ninguna de las cinco afecta a un resultado.** El auditor de coherencia
 (`scripts/figuras/verificar_memoria.py`) contrasta las 432 cifras del texto y
-las tablas contra `scripts/figuras/resultados.py` y sale en verde. Lo que falla
-en tres de los cuatro casos es la *descripción* de algo que el código hace de
-otra manera; el cuarto es una figura que se quedó con cifras viejas.
+las tablas contra `scripts/figuras/resultados.py` y sale en verde. Dos están en
+figuras —una con cifras de escala desfasadas, otra con un rótulo cortado— y las
+otras tres fallan al *describir* algo que el código hace de otra manera.
 
-**El código de este repositorio sí está corregido** en el único caso que lo
-requería (la errata 1). Por eso, si se regenera la figura 3.2 con
-`scripts/figuras/fig_datos.py`, sale distinta de la que imprime `main.pdf`. Esa
-divergencia es deliberada y es la que explica este fichero.
+**El código de este repositorio sí está corregido** en los dos casos que lo
+requerían (las erratas 1 y 2). Por eso, si se regeneran las figuras 3.2 y 5.2,
+salen distintas de las que imprime `main.pdf`. Esa divergencia es deliberada y
+es la que explica este fichero.
 
 ---
 
@@ -34,7 +34,7 @@ El cuarto régimen entró el 21 de agosto, al incorporar el día de la botnet
 (`02-03-2018`, Ares). Las cuatro fichas de esa figura estaban escritas a mano y
 no se actualizaron con él.
 
-**Es la más visible de las cuatro** porque se contradice con la propia memoria a
+**Es la más visible de las cinco** porque se contradice con la propia memoria a
 tres páginas de distancia: el resumen, en la página I, dice «17.203.272
 conexiones TCP repartidas en **seis** días del conjunto CSE-CIC-IDS2018».
 
@@ -52,7 +52,32 @@ es una ficha de escala, dice cuánto material se procesó, no qué salió.
 
 ---
 
-## 2. El cuarto escalar de la vista de metadatos no es la duración
+## 2. A la figura 5.2 se le sale del recorte la última palabra de un rótulo
+
+**Dónde:** figura 5.2, «La evasión separa la huella de la herramienta del
+contenido real», capítulo 5. Panel derecho.
+
+El rótulo bajo ese panel se imprime como «día web: con 160 bytes se borra el» y
+ahí se acaba. El texto completo es «**día web: con 160 bytes se borra el
+ataque**»: el rótulo mide 38 px más que el panel —que es el estrecho de los
+dos— y la última palabra queda fuera del recorte.
+
+Ese panel no es decorativo: es el aviso metodológico del capítulo. Dice que, en
+el día web, sobrescribir los primeros 160 bytes no evadía la detección sino que
+*destruía el ataque*, porque la inyección SQL vive en esos bytes; repetida la
+prueba con un prefijo de 24 bytes, que no la toca, el recall aguanta en 0.8852.
+La regla que sale de ahí —un test de evasión solo vale si el ataque sigue siendo
+el ataque después de la modificación— está enunciada entera en el texto de la
+sección, así que no se pierde información: el defecto es de composición.
+
+**Qué se ha corregido.** El rótulo va ahora en dos líneas y entra completo. De
+paso, las etiquetas del eje del panel izquierdo: a 7,4 pt «DoS-Hulk» y
+«DDoS-LOIC» se tocaban y se leían como una sola palabra; bajadas a 6,6 pt, ya
+no. Como en la errata 1, `main.pdf` no se recompila.
+
+---
+
+## 3. El cuarto escalar de la vista de metadatos no es la duración
 
 **Dónde:** §3.2, §3.3 y §4.2.
 
@@ -70,7 +95,7 @@ leerlos— vale igual para «bytes por paquete» que para «duración».
 
 ---
 
-## 3. La atención cruzada no sustituye a la concatenación: la incluye
+## 4. La atención cruzada no sustituye a la concatenación: la incluye
 
 **Dónde:** §5.1, descripción de `CrossAttentionNet`.
 
@@ -90,7 +115,7 @@ que lo añadido no aporta.
 
 ---
 
-## 4. §2.4 remite a una explicación que §6.5 no da
+## 5. §2.4 remite a una explicación que §6.5 no da
 
 **Dónde:** §2.4, cierre del apartado de conjuntos de datos.
 

@@ -430,8 +430,10 @@ def f39_evasion_interarribo() -> None:
                              fontweight="bold", rotation=90)
     ax1.set_ylim(0, 1.12)
     ax1.set_yticks([0, 0.5, 1.0], ["0", "0.5", "1"], fontsize=8)
-    ax1.set_xticks(x, [d.replace(" ", "\n", 1) for d in dias], fontsize=7.4,
-                   linespacing=1.3)
+    # 6.6 y no 7.4: a 7.4 "DoS-Hulk" y "DDoS-LOIC" se tocan y se leen como una
+    # sola palabra. Son cuatro etiquetas en un panel estrecho.
+    ax1.set_xticks(x, [d.replace(" ", "\n", 1) for d in dias], fontsize=6.6,
+                   linespacing=1.35)
     ax1.set_ylabel("recall del ataque tras camuflar los bytes", fontsize=7.6)
     limpiar_ejes(ax1, rejilla="y")
     # Rotulo de panel ABAJO: arriba choca con el subtitulo de figura (leccion de F35).
@@ -454,8 +456,11 @@ def f39_evasion_interarribo() -> None:
     ax2.set_yticks([0, 0.5, 1.0], ["0", "0.5", "1"], fontsize=8)
     ax2.set_xticks(range(2), etiquetas, fontsize=7.4, linespacing=1.3)
     limpiar_ejes(ax2, rejilla="y")
-    ax2.set_xlabel("día web: con 160 bytes se borra el ataque",
-                   fontsize=8, color=TINTA_2, labelpad=6)
+    # ERRATA (14-sep): en una sola linea este rotulo mide 38 px mas que el panel
+    # -que es el estrecho de los dos- y "ataque" se quedaba fuera del recorte.
+    # En la memoria entregada se lee "...se borra el". Partido en dos, cabe.
+    ax2.set_xlabel("día web: con 160 bytes\nse borra el ataque",
+                   fontsize=8, color=TINTA_2, labelpad=6, linespacing=1.35)
 
     titulo_figura(fig, "La evasión separa la huella de la herramienta del contenido real",
                   "El payload se desploma donde los primeros bytes son la firma de la "

@@ -30,14 +30,15 @@ o cambiar de conjunto de datos.
 | `models/*.md` | Los 62 informes de resultados que producen los experimentos. |
 | `DIF_Dissertation_2026/` | La memoria en LaTeX. `main.pdf` es la versión entregada al ADDI el 8 de septiembre de 2026, sin modificar. |
 | `figuras/` | Figuras generadas, en dos variantes: anotada y para la memoria. |
-| `ERRATAS.md` | Las cuatro erratas encontradas al revisar el texto contra el código **después** de la entrega. |
+| `ERRATAS.md` | Las cinco erratas encontradas al revisar el texto contra el código **después** de la entrega. |
 
 > **Sobre `ERRATAS.md`.** La memoria entregada no se toca, así que las erratas se
-> documentan en lugar de corregirse en el PDF. El código sí está corregido en el
-> único caso que lo requería —la figura 3.2, que se había quedado con cifras de
-> una versión anterior del trabajo—, de modo que regenerarla ahora produce una
-> figura distinta de la que imprime `main.pdf`. Esa divergencia es deliberada y
-> está explicada allí.
+> documentan en lugar de corregirse en el PDF. El código sí está corregido en los
+> dos casos que lo requerían —la figura 3.2, que se había quedado con cifras de
+> una versión anterior del trabajo, y la 5.2, a la que se le salía del recorte la
+> última palabra de un rótulo—, de modo que regenerarlas ahora produce figuras
+> distintas de las que imprime `main.pdf`. Esa divergencia es deliberada y está
+> explicada allí.
 
 ## Reproducir los resultados
 
