@@ -21,6 +21,7 @@ from estilo import (APAGADO, AQUA, AZUL, CRITICO, DIR_CACHE, NARANJA,  # noqa: E
                     REJILLA, TINTA, TINTA_2, ANCHO_COMPLETO, envolver,
                     etiquetar_barras_h, etiquetar_barras_v, guardar,
                     leyenda_abajo, limpiar_ejes, linea_azar, nota, nueva,
+                    rotulo,
                     titulo, titulo_figura)
 
 
@@ -128,7 +129,7 @@ def f23_hibrido_ramas() -> None:
     for i, (m, c) in enumerate(zip(modelos, colores)):
         vals = [R.HIBRIDO[t][m] for t in tareas]
         desp = (i - (len(modelos) - 1) / 2) * an
-        b = ax.bar(x + desp, vals, an * 0.9, color=c, label=m)
+        b = ax.bar(x + desp, vals, an * 0.9, color=c, label=rotulo(m))
         # Etiquetado SELECTIVO. En la tarea binaria del SSH los cuatro valores
         # son ~1.0 y sus etiquetas se pisarian; lo que hay que comparar es la
         # fusion ingenua contra el hibrido, asi que solo se rotulan esas dos.
@@ -252,7 +253,7 @@ def f25_banners() -> None:
         ax.text(x, 0.87 - n * 0.115 - 0.06,
                 f"{R.SALIENCY['n_banners_ataque']} banners distintos en todo el ataque"
                 if col == 0 else
-                f"{R.SALIENCY['n_banners_benignos']} banners distintos en el tráfico legitimo",
+                f"{R.SALIENCY['n_banners_benignos']} banners distintos en el tráfico legítimo",
                 transform=ax.transAxes, fontsize=7.5, color=color,
                 fontweight="bold", va="top")
 

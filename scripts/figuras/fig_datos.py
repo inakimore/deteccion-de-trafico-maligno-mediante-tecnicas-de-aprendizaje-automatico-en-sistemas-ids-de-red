@@ -144,7 +144,7 @@ def f08_servicio_vs_puerto() -> None:
     ax1.set_xlabel("% que el contenido confirma")
     ax1.set_title("En laboratorio, coinciden", loc="left", fontsize=8.5,
                   color=TINTA, pad=14)
-    ax1.text(0.0, 1.01, "por eso ningun resultado previo cambia",
+    ax1.text(0.0, 1.01, "por eso ningún resultado previo cambia",
              transform=ax1.transAxes, fontsize=7, color=TINTA_2,
              style="italic", va="bottom")
 

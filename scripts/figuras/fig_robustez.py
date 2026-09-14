@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import resultados as R  # noqa: E402
 from estilo import (APAGADO, AQUA, AZUL, CRITICO, NARANJA, RAMPA_AZUL,  # noqa: E402
                     TINTA, TINTA_2, ANCHO_COMPLETO, envolver,
-                    etiquetar_barras_v, guardar, leyenda_abajo, limpiar_ejes,
+                    etiquetar_barras_v, guardar, leyenda_abajo, limpiar_ejes, rotulo,
                     linea_azar, nota, nueva, titulo, titulo_figura)
 
 
@@ -55,12 +55,12 @@ def f26_evasion() -> None:
             ax.annotate("invariante", xy=(orig - 0.02, i), ha="right",
                         va="center", fontsize=7.5, color=NARANJA,
                         fontweight="bold")
-        ax.text(-0.02, i, vista, ha="right", va="center", fontsize=8,
+        ax.text(-0.02, i, rotulo(vista), ha="right", va="center", fontsize=8,
                 color=TINTA)
 
     # separador y titulo de cada escenario
     for i, esc in enumerate(R.EVASION):
-        ax.text(1.04, i * 2 + 0.5, envolver(esc, 18), ha="left", va="center",
+        ax.text(1.04, i * 2 + 0.5, envolver(rotulo(esc), 18), ha="left", va="center",
                 fontsize=7.5, color=TINTA_2, linespacing=1.3)
     ax.axhline(1.5, color="#e1e0d9", lw=1)
 
@@ -104,10 +104,10 @@ def f27_anomalia() -> None:
     fig, ax = nueva(ANCHO_COMPLETO, 3.0)
     for i, (v, c) in enumerate(zip(vistas, colores)):
         vals = [R.ANOMALIA[r][v] for r in regimenes]
-        b = ax.bar(x + (i - 1) * an, vals, an * 0.9, color=c, label=v)
+        b = ax.bar(x + (i - 1) * an, vals, an * 0.9, color=c, label=rotulo(v))
         etiquetar_barras_v(ax, b, vals, fmt="{:.2f}", dy=0.012)
 
-    ax.set_xticks(x, [envolver(r, 20) for r in regimenes], fontsize=8)
+    ax.set_xticks(x, [envolver(rotulo(r), 20) for r in regimenes], fontsize=8)
     ax.set_ylim(0, 1.14)
     ax.set_ylabel("ROC-AUC (no supervisado)")
     limpiar_ejes(ax)
@@ -145,7 +145,7 @@ def f28_rigor() -> None:
                         markeredgecolor="#fcfcfb", markeredgewidth=1.2)
             ax.text(lo - 0.004, i, f"{val:.4f}", ha="right", va="center",
                     fontsize=7.5, color=TINTA)
-        ax.set_yticks(range(len(vistas)), vistas, fontsize=7.5)
+        ax.set_yticks(range(len(vistas)), [rotulo(v) for v in vistas], fontsize=7.5)
         ax.set_xlim(0.975, 1.004)
         ax.set_xticks([0.98, 1.0], ["0.98", "1.0"])
         ax.invert_yaxis()
@@ -187,7 +187,7 @@ def f29_cruzado() -> None:
     fig, ax = nueva(ANCHO_COMPLETO, 3.0)
     for i, (v, c) in enumerate(zip(vistas, colores)):
         vals = [R.CRUZADO[p][v] for p in pares]
-        b = ax.bar(x + (i - 1) * an, vals, an * 0.9, color=c, label=v)
+        b = ax.bar(x + (i - 1) * an, vals, an * 0.9, color=c, label=rotulo(v))
         etiquetar_barras_v(ax, b, vals, fmt="{:.2f}", dy=0.012)
 
     ax.set_xticks(x, ["Web\n(en claro)", "SSH\n(cifrado)", "DoS\n(volumétrico)"])

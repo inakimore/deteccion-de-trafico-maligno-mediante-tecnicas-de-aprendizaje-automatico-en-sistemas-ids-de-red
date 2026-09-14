@@ -101,7 +101,7 @@ def f34_perfiles_temporales() -> None:
     venda la planitud como si fuera exclusiva del Bot.
     """
     dias = [("16-02", "DoS-Hulk (1 origen)", CRITICO),
-            ("20-02", "DDoS-LOIC (10 origenes)", NARANJA),
+            ("20-02", "DDoS-LOIC (10 orígenes)", NARANJA),
             ("02-03", "Bot / Ares (10 bots)", AZUL)]
     datos = {}
     for dia, _, _ in dias:
@@ -202,7 +202,10 @@ def f35_ceguera_infiltracion() -> None:
     ax2.set_ylim(500, 6e5)
     ax2.set_ylabel("conexiones (escala log)", fontsize=8)
     limpiar_ejes(ax2, rejilla="y")
-    ax2.set_xlabel("en rojo, los estados sin dialogo: S0 (SYN sin respuesta) y REJ",
+    # ERRATA (14-sep): en una linea este rotulo sobresale 21 px del panel y
+    # "y REJ" se quedaba fuera del recorte. En la memoria entregada se lee
+    # "...S0 (SYN sin respuesta)" y ahi se corta.
+    ax2.set_xlabel("en rojo, los estados sin diálogo:\nS0 (SYN sin respuesta) y REJ",
                    fontsize=8, color=TINTA_2, labelpad=6)
 
     titulo_figura(fig, "El payload no detecta peor la Infiltration: no puede verla",
@@ -236,7 +239,7 @@ def f36_rafaga_diluida() -> None:
         ("16-02", "DoS-Hulk", "1 origen"),
         ("14-02", "SSH-BF", "1 origen"),
         ("15-02", "GoldenEye", "+Slowloris"),
-        ("20-02", "DDoS-LOIC", "10 origenes"),
+        ("20-02", "DDoS-LOIC", "10 orígenes"),
         ("02-03", "Bot", "10 bots"),
         ("22-02", "Web", "BF/XSS/SQLi"),
     )]

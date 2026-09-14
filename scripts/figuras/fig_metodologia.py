@@ -22,7 +22,7 @@ import resultados as R  # noqa: E402
 from estilo import (APAGADO, AZUL, CRITICO, NARANJA, TINTA, TINTA_2,  # noqa: E402
                     ANCHO_COMPLETO, etiquetar_barras_h, etiquetar_barras_v, miles,
                     guardar, leyenda_abajo, limpiar_ejes, linea_azar, nota,
-                    nueva, titulo, titulo_figura)
+                    nueva, rotulo, titulo, titulo_figura)
 
 
 # --------------------------------------------------------------------- F11
@@ -141,7 +141,8 @@ def f13_balanceo_global() -> None:
 
     fig, (ax1, ax2) = nueva(ANCHO_COMPLETO, 2.7, ncols=2)
 
-    b1 = ax1.bar(vistas, acc, color=APAGADO, width=0.5)
+    etiq = [rotulo(v) for v in vistas]   # las claves van sin tilde
+    b1 = ax1.bar(etiq, acc, color=APAGADO, width=0.5)
     etiquetar_barras_v(ax1, b1, acc, fmt="{:.4f}", dy=0.00004)
     ax1.set_ylim(0.998, 1.0005)
     limpiar_ejes(ax1)
@@ -150,7 +151,7 @@ def f13_balanceo_global() -> None:
     ax1.text(0.0, 1.01, "las tres vistas, indistinguibles", transform=ax1.transAxes,
              fontsize=7, color=TINTA_2, style="italic", va="bottom")
 
-    b2 = ax2.bar(vistas, fp, color=CRITICO, width=0.5)
+    b2 = ax2.bar(etiq, fp, color=CRITICO, width=0.5)
     etiquetar_barras_v(ax2, b2, fp, fmt="{:.1%}", dy=0.012)
     ax2.set_ylim(0, 1.0)
     ax2.set_yticks([0, 0.25, 0.5, 0.75], ["0 %", "25 %", "50 %", "75 %"])

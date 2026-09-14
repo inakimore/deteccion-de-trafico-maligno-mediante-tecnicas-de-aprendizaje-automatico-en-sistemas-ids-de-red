@@ -185,7 +185,7 @@ def f18_entropia_distribucion() -> None:
     dias = [("14-02", "Cifrado - SSH (:22)",
              "mismo rango, cerca del máximo: a nivel de byte son el mismo objeto"),
             ("22-02", "En claro - HTTP (:80)",
-             "rangos distintos: el contenido si aporta senal")]
+             "rangos distintos: el contenido sí aporta señal")]
     disponibles = [(d, t, s) for d, t, s in dias
                    if (DIR_CACHE / f"entropia_{d}.npz").exists()]
     if not disponibles:

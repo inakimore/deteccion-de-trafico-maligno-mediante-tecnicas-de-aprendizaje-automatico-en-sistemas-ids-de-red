@@ -126,7 +126,7 @@ def f32_importancia_permutacion() -> None:
     ax.set_yticks(y, nombres, fontsize=7.5, family="monospace")
     ax.invert_yaxis()
     ax.set_xlim(0, max(vals) * 1.28)
-    ax.set_xlabel("caida de accuracy al permutar el atributo")
+    ax.set_xlabel("caída de accuracy al permutar el atributo")
     limpiar_ejes(ax, rejilla="x")
 
     for i, (v, e) in enumerate(zip(vals, errs)):
@@ -134,7 +134,7 @@ def f32_importancia_permutacion() -> None:
                 color=TINTA_2)
 
     # leyenda por familia (identidad, no ranking)
-    ax.barh([], [], color=NARANJA, label="caracteristicas de Zeek (flujo y ráfaga)")
+    ax.barh([], [], color=NARANJA, label="características de Zeek (flujo y ráfaga)")
     ax.barh([], [], color=AZUL, label="atributos del payload (literatura)")
     leyenda_abajo(ax, ncols=2, dy=-0.13)
 

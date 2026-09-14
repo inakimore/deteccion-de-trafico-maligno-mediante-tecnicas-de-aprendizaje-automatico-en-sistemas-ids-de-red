@@ -70,7 +70,7 @@ def f01_pipeline() -> None:
         (0.000, "PCAP crudo", AZUL, "~150 GB de capturas\ndel día"),
         (0.205, "Saneado", CRITICO, "repair_pcap.py\nobligatorio: si no,\nZeek se corta"),
         (0.410, "Zeek", AZUL, "extract_payload.zeek\n1 fila por paquete\ncon datos"),
-        (0.615, "Vectorizacion", AZUL, "build_dataset.py\nagrega por uid =\nconexión TCP"),
+        (0.615, "Vectorización", AZUL, "build_dataset.py\nagrega por uid =\nconexión TCP"),
         (0.820, "Dataset", AQUA, "npz + meta.csv\nautocontenido, 5.4 GB"),
     ]
     an, al, y = 0.175, 0.15, 0.52
@@ -91,7 +91,7 @@ def f01_pipeline() -> None:
 
     # La salida cuelga directamente del dataset, sin rodeos que crucen texto.
     caja(ax, 0.545, 0.03, 0.45, 0.13,
-         "Evaluacion por servicio  ->  models/*.md", color=AQUA, fs=7.0,
+         "Evaluación por servicio  ->  models/*.md", color=AQUA, fs=7.0,
          negrita=True)
     flecha(ax, 0.9075, 0.26, 0.9075, 0.17, color=AQUA)
 
@@ -266,7 +266,7 @@ def f05_cronologia() -> None:
     fases = [
         (0.00, 0.20, "FASE 1\nmar - abr", "Baseline con metadatos\nde flujo (CSV)", AZUL),
         (0.22, 0.36, "FASE 2\nabr - jul", "Payload en crudo:\nPCAP -> Zeek -> bytes", NARANJA),
-        (0.60, 0.40, "FASE 3\njul - ago", "Deep learning, hibrido,\nrobustez y evasión", AQUA),
+        (0.60, 0.40, "FASE 3\njul - ago", "Deep learning, híbrido,\nrobustez y evasión", AQUA),
     ]
     for x, an, nombre, desc, color in fases:
         caja(ax, x, 0.60, an - 0.015, 0.20, nombre, color=color, fs=7.2,
@@ -279,7 +279,7 @@ def f05_cronologia() -> None:
         (0.10, "Cae el mito\ndel 99.99 %"),
         (0.31, "El espejismo\ndel 99.96 %"),
         (0.46, "Benigno\ncontaminado"),
-        (0.66, "byte-CNN\ne hibrido"),
+        (0.66, "byte-CNN\ne híbrido"),
         (0.80, "Evasión y\nzero-day"),
         (0.93, "Servicio y\natributos"),
     ]
@@ -291,7 +291,7 @@ def f05_cronologia() -> None:
         ax.text(x, 0.27, txt, transform=ax.transAxes, ha="center", va="top",
                 fontsize=6.3, color=TINTA, linespacing=1.4)
 
-    ax.text(0.5, 0.06, "Cada hito es una correccion de un resultado propio, no un resultado nuevo.",
+    ax.text(0.5, 0.06, "Cada hito es una corrección de un resultado propio, no un resultado nuevo.",
             transform=ax.transAxes, ha="center", va="center", fontsize=7,
             color=TINTA_2, style="italic")
 

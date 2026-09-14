@@ -137,6 +137,28 @@ sistemática, que es lo que lo dejó fuera del alcance.
 
 ---
 
+## Erratas ortograficas en las figuras
+
+Dieciocho palabras sin tilde en el texto **dibujado dentro** de las figuras:
+«tráfico legitimo» (5.1), «meta+rafaga» y «Volumetrico» (4.x y 5.x), «hibrido»,
+«fusion», «caida», «caracteristicas», «origenes», «dialogo», «senal», «ningun».
+
+Casi todas tienen la misma causa: la etiqueta se tomaba directamente de una
+clave de `resultados.py`, y esas claves van en ASCII a propósito, porque se
+indexan y se comparan —acentuar una rompe el acceso, y ya pasó tres veces con
+`precision`, `entropia` y `rafaga`—. La solución no es acentuar la clave sino
+`estilo.rotulo()`, que traduce clave a rótulo **solo en el momento de dibujar**.
+
+Se encontraron con un script que recorre las 42 figuras, extrae todo el texto
+realmente dibujado y contrasta cada palabra sin tilde contra la prosa de los
+capítulos, que hace de autoridad ortográfica. El mismo script mide el recorte de
+cada rótulo, y así apareció la errata 2. Estado actual del código: **0 tildes
+pendientes, 0 rótulos cortados, 0 comas decimales** en las 42.
+
+No se listan como erratas numeradas porque ninguna cambia lo que la figura dice.
+
+---
+
 ## Tres imprecisiones menores
 
 Ninguna es falsa en sentido estricto.

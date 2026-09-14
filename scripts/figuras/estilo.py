@@ -41,6 +41,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import os
+import re as _re
 import matplotlib
 
 matplotlib.use("Agg")
@@ -183,6 +184,34 @@ def num(valor, fmt="{:.3f}") -> str:
     siguen la misma convencion para que no convivan las dos.
     """
     return fmt.format(valor)
+
+
+# Las claves de resultados.py son ASCII a proposito: se comparan, se indexan y
+# una tilde dentro de una clave rompe el acceso (ya paso tres veces con
+# 'precision', 'entropia' y 'rafaga'). Pero lo que se IMPRIME en una figura
+# tiene que ir acentuado. Esta tabla traduce lo uno en lo otro, y se aplica
+# solo en el momento de dibujar, nunca al indexar.
+_ROTULOS = {
+    "rafaga": "ráfaga",
+    "volumetrico": "volumétrico",
+    "Volumetrico": "Volumétrico",
+    "hibrido": "híbrido",
+    "Hibrido": "Híbrido",
+    "fusion": "fusión",
+    "basica": "básica",
+    "interarribo": "inter-arribo",
+}
+
+
+def rotulo(texto: str) -> str:
+    """Version imprimible de una clave de resultados.py: la misma, con tildes.
+
+    Usar SIEMPRE al dibujar una clave como etiqueta. Nunca al revés: acentuar
+    la clave rompe los diccionarios.
+    """
+    for ascii_, bonito in _ROTULOS.items():
+        texto = _re.sub(rf"\b{_re.escape(ascii_)}\b", bonito, texto)
+    return texto
 
 
 def envolver(texto: str, ancho: int) -> str:
